@@ -201,6 +201,7 @@
       shell: |
         export KUBECONFIG=/tmp/{{ clusterid }}/auth/kubeconfig
         oc adm certificate approve $(oc get csr -o=jsonpath="{..metadata.name}")
+      ignore_errors: yes
 
     - name: delete broken machine and machineset definitions
       shell: |
