@@ -185,9 +185,17 @@
         aws ec2 create-tags --resources "{{ publicsubnets.split(',')[2] }}" --tags Key=kubernetes.io/cluster/{{ clusterid }},Value=shared
       #with_sequence: start=0 count=3
 
+    - name: "Check if /tmp/{{ clusterid }}/bootstrap-complete exists"
+      stat:
+        path: /tmp/{{ clusterid }}/bootstrap-complete
+      register: bootstrap_result
 
     - name: Wait until bootstrap is complete
-      command: openshift-install user-provided-infrastructure bootstrap-complete --dir=/tmp/{{ clusterid }}
+      shell: |
+        set -e
+        openshift-install user-provided-infrastructure bootstrap-complete --dir=/tmp/{{ clusterid }}
+        touch /tmp/{{ clusterid }}/bootstrap-complete
+      when: bootstrap_result.stat.exists == False
 
     - name: approve master certificates
       shell: |
