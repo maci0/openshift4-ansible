@@ -1,0 +1,50 @@
+apiVersion: config.openshift.io/v1
+kind: DNS
+metadata:
+  name: cluster
+spec:
+  baseDomain: {{ clusterid }}.{{ publiczonename }}
+  privateZone:
+    id: {{ privatezoneid }}
+  publicZone:
+    id: {{ publiczoneid }}
+[ec2-user@ip-172-29-192-191 files]$ cat install-config.yaml.j2
+apiVersion: v1beta4
+baseDomain: {{ publiczonename }}
+compute:
+- name: worker
+  platform:
+    aws:
+      type: m5.2xlarge
+      zones:
+      - us-west-2a
+      - us-west-2b
+      - us-west-2c
+  replicas: 3
+controlPlane:
+  name: master
+  platform:
+    aws:
+      type: m5.xlarge
+      zones:
+      - us-west-2a
+      - us-west-2b
+      - us-west-2c
+  replicas: 3
+metadata:
+  creationTimestamp: null
+  name: "{{ clusterid }}"
+networking:
+  clusterNetwork:
+  - cidr: 10.128.0.0/14
+    hostPrefix: 23
+  machineCIDR: {{ vpccidr }}
+  networkType: OpenShiftSDN
+  serviceNetwork:
+  - 172.30.0.0/16
+platform:
+  aws:
+    region: "{{ region }}"
+    userTags:
+      auto_shut_bool: "True"
+pullSecret: '{{ pull_secret }}'
