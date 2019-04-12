@@ -222,7 +222,12 @@
       shell: |
         export KUBECONFIG=/tmp/{{ clusterid }}/auth/kubeconfig
         oc replace -f /tmp/{{ clusterid }}/dnses.yaml
-
+        
+    - name: workaround for missing kubeadmin-password file
+      copy:
+        dest: "/tmp/{{ clusterid }}/auth/kubeadmin-password"
+        content: "REDACTED, use kubeconfig instead"
+        
     - name: Wait until install is complete
       command: openshift-install user-provided-infrastructure finish --dir=/tmp/{{ clusterid }}
 
