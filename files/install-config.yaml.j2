@@ -1,14 +1,3 @@
-apiVersion: config.openshift.io/v1
-kind: DNS
-metadata:
-  name: cluster
-spec:
-  baseDomain: {{ clusterid }}.{{ publiczonename }}
-  privateZone:
-    id: {{ privatezoneid }}
-  publicZone:
-    id: {{ publiczoneid }}
-[ec2-user@ip-172-29-192-191 files]$ cat install-config.yaml.j2
 apiVersion: v1beta4
 baseDomain: {{ publiczonename }}
 compute:
