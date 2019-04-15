@@ -87,11 +87,11 @@
         template: "files/cloudformation/02_cluster_infra.yaml"
         template_parameters:
           ClusterName: "{{ clusterid }}"
-          HostedZoneId: "{{ publiczoneid }}"
-          HostedZoneName: "{{ publiczonename }}"
           PrivateSubnets: "{{ privatesubnets}}"
           PrivateZoneId: "{{ privatezoneid }}"
           PublicSubnets: "{{ publicsubnets }}"
+          PublicZoneId: "{{ publiczoneid }}"
+          PublicZoneName: "{{ publiczonename }}"
           VpcId: "{{ vpcid }}"
         tags:
           clusterid: "{{ clusterid }}"
