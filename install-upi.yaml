@@ -249,5 +249,5 @@
     - name: Scale ingress controller replicas
       command: oc -n openshift-ingress-operator patch ingresscontroller/default -p '{"spec":{"replicas":6}}' --type merge
       environment:
-        KUBECONFIG: /tmp/{{ clusterid }}/auth/kubeconfig
+        KUBECONFIG: /tmp/{{ clustername }}/auth/kubeconfig
 ...
