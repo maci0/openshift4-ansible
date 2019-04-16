@@ -3,7 +3,7 @@
   gather_facts: false
   hosts: localhost
   vars_files:
-    - "{{ playbook_dir }}/vars.yml"
+    - "{{ playbook_dir }}/vars.yaml"
 
   tasks:
     - name: create cluster install config directory
