@@ -201,53 +201,67 @@
         touch /tmp/{{ clustername }}/bootstrap-complete
       when: bootstrap_result.stat.exists == False
 
+    - name: "Check if /tmp/{{ clustername }}/bootstrap-complete exists"
+      stat:
+        path: /tmp/{{ clustername }}/finish
+      register: finish_result
+
     - name: approve master certificates
       shell: |
         export KUBECONFIG=/tmp/{{ clustername }}/auth/kubeconfig
         oc adm certificate approve $(oc get csr -o=jsonpath="{..metadata.name}")
       ignore_errors: yes
-
-    - fail:
-
-    - name: delete broken machine and machineset definitions
-      shell: |
-        export KUBECONFIG=/tmp/{{ clustername }}/auth/kubeconfig
-        #oc -n openshift-machine-api delete machineset -l machine.openshift.io/cluster-api-cluster!={{ clustername }}
-        #oc -n openshift-machine-api delete machine    -l machine.openshift.io/cluster-api-machine-role=master
+      when: finish.stat.exists == False
 
     - name: render machineset template
       template:
         src: files/machinesets.yaml.j2
         dest: /tmp/{{ clustername }}/machineset-{{ item.value }}.yaml
       with_dict: {a: 0, b: 1, c: 2}
+      when: finish.stat.exists == False
 
-#    - name: import machinesets
-#      shell: |
-#        export KUBECONFIG=/tmp/{{ clustername }}/auth/kubeconfig
-#        oc -n openshift-machine-api create -f /tmp/{{ clustername }}/machineset-{{ item }}.yaml
-#      with_sequence: start=0 count=3
-#      ignore_errors: yes
+    - name: import machinesets
+      shell: |
+        export KUBECONFIG=/tmp/{{ clustername }}/auth/kubeconfig
+        oc -n openshift-machine-api replace -f /tmp/{{ clustername }}/machineset-{{ item }}.yaml
+      with_sequence: start=0 count=3
+      ignore_errors: yes
+      when: finish.stat.exists == False
+
+#todo only do this on first install
+    - name: delete broken machines
+      shell: |
+        export KUBECONFIG=/tmp/{{ clustername }}/auth/kubeconfig
+        oc -n openshift-machine-api delete machine    -l machine.openshift.io/cluster-api-machine-role=worker
+      when: finish.stat.exists == False
 
     - name: render DNS settings
       template:
         src: files/dnses.yaml.j2
         dest: /tmp/{{ clustername }}/dnses.yaml
+      when: finish.stat.exists == False
 
     - name: fix dns settings
       shell: |
         export KUBECONFIG=/tmp/{{ clustername }}/auth/kubeconfig
         oc replace -f /tmp/{{ clustername }}/dnses.yaml
+      when: finish.stat.exists == False
         
     - name: workaround for missing kubeadmin-password file
       copy:
         dest: "/tmp/{{ clustername }}/auth/kubeadmin-password"
         content: "REDACTED, use kubeconfig instead"
-        
-    - name: Wait until install is complete
-      command: openshift-install user-provided-infrastructure finish --dir=/tmp/{{ clustername }}
 
     - name: Scale ingress controller replicas
       command: oc -n openshift-ingress-operator patch ingresscontroller/default -p '{"spec":{"replicas":6}}' --type merge
       environment:
         KUBECONFIG: /tmp/{{ clustername }}/auth/kubeconfig
+      when: finish.stat.exists == False
+
+    - name: Wait until install is complete
+      shell: |
+        openshift-install user-provided-infrastructure finish --dir=/tmp/{{ clustername }}
+        touch /tmp/{{ clustername }}/finish
+      when: finish.stat.exists == False
+
 ...
