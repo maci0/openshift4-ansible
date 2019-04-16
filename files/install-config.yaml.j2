@@ -37,4 +37,6 @@ platform:
     userTags:
       auto_shut_bool: "True"
 pullSecret: '{{ pull_secret }}'
+{% if ssh_key is defined %}
 sshKey: "{{ ssh_key }}"
+{% endif %}
