@@ -2,65 +2,64 @@
 - name: dark magic
   gather_facts: false
   hosts: localhost
-  vars:
-    region: "us-west-2"
-    clusterid: "foobar"
-    publiczoneid: "ZOC70SORUQC4ZO"
-    publiczonename: "ocp4.aws.example.com"
-    privatezoneid: "ZB5JSFHSIEHVAG"
-    privatezonename: "aws.example.com"
-# subnet order matters, needs to be az1,az2,az3,etc
-    privatesubnets: "subnet-a62e89d2f27096776,subnet-965bf47c8c64ace62,subnet-69fca4cfc562cdcca"
-    publicsubnets: "subnet-a86c92536490376fd,subnet-dc4fa13075bf07989,subnet-80d0b5c13ba100d5e"
-    vpcid: "vpc-bcb26f4011256a1fd"
-    vpccidr: "10.30.0.0/18"
-    rhcos_ami: "ami-d9430bd57f96ad9e9"
-#get from try.openshift.com
-    pull_secret: '{"auths":{"cloud.openshift.com":{"auth":"b3BjRsRVVSdnA..... example.com"}}}'
-
-
+  vars_files:
+    - "{{ playbook_dir }}/vars.yml"
 
   tasks:
     - name: create cluster install config directory
       file:
-        path: /tmp/{{ clusterid }}
+        path: /tmp/{{ clustername }}
         state: "{{ state | default('directory') }}"
         mode: 0755
       when:
         - ( state is not defined ) or ( 'absent' not in state )
 
-    - name: "Check if /tmp/{{ clusterid }}/metadata.json exists"
+    - name: "Check if /tmp/{{ clustername }}/metadata.json exists"
       stat:
-        path: /tmp/{{ clusterid }}/metadata.json
+        path: /tmp/{{ clustername }}/metadata.json
       register: stat_result
 
     - name: render template
       template:
         src: files/install-config.yaml.j2
-        dest: /tmp/{{ clusterid }}/install-config.yaml
+        dest: /tmp/{{ clustername }}/install-config.yaml
       when: stat_result.stat.exists == False
 
     - name: Create the cluster ignition configs
-      command: openshift-install create ignition-configs --dir=/tmp/{{ clusterid }}
+      command: openshift-install create ignition-configs --dir=/tmp/{{ clustername }}
       args:
-        creates: /tmp/{{ clusterid }}/metadata.json
+        creates: /tmp/{{ clustername }}/metadata.json
       when: stat_result.stat.exists == False
 
     - name: read master CA info
-      command: cat /tmp/{{ clusterid }}/master.ign
+      command: cat /tmp/{{ clustername }}/master.ign
       register: result
 
     - set_fact:
         master_ignition: "{{ result.stdout | from_json }}"
 
+    - name: read Infrastructure ID from metadata.json
+      command: cat /tmp/{{ clustername }}/metadata.json
+      register: metadata_result
+
+    - set_fact:
+        metadata_json: "{{ metadata_result.stdout | from_json }}"
+
+    - set_fact:
+        infraid: "{{ metadata_json.infraID }}"
+
 #    - debug:
 #        msg: "{{ master_ignition.ignition.security.tls.certificateAuthorities[0].source }}"
+#
+#    - debug:
+#        msg: "{{ metadata_json.infraID }}"
+    
 
 
 #todo: map state absent to mode delete
     - name: "{{ 'Create' if (state is undefined or 'absent' not in state) else 'Terminate' }} S3 bucket ( bootstrap config )"
       aws_s3:
-        bucket: "{{ clusterid }}-bootstrap"
+        bucket: "{{ infraid }}-bootstrap"
         region: "{{ region }}"
         mode: "{{ state | default('create') }}"
       retries: 3
@@ -70,9 +69,9 @@
 
     - name: upload bootstrap.ign to s3 bucket
       aws_s3:
-        bucket: "{{ clusterid }}-bootstrap"
+        bucket: "{{ infraid }}-bootstrap"
         object: /bootstrap.ign
-        src: /tmp/{{ clusterid }}/bootstrap.ign
+        src: /tmp/{{ clustername }}/bootstrap.ign
         mode: "{{ state | default('put') }}"
       retries: 3
       delay: 3
@@ -81,12 +80,13 @@
 
     - name: "{{ 'Create' if (state is undefined or 'absent' not in state) else 'Terminate' }} UPI Network Elements (Route53 & LBs)"
       cloudformation:
-        stack_name: "{{ clusterid }}-cluster-infra"
+        stack_name: "{{ infraid }}-cluster-infra"
         state: "{{ state | default('present') }}"
         region: "{{ region }}"
-        template: "files/cloudformation/02_cluster_infra.yaml"
+        template: "files/cloudformation/02_cluster_infra.yaml.existingvpc"
         template_parameters:
-          ClusterName: "{{ clusterid }}"
+          ClusterName: "{{ clustername }}"
+          InfrastructureName: "{{ infraid }}"
           PrivateSubnets: "{{ privatesubnets}}"
           PrivateZoneId: "{{ privatezoneid }}"
           PublicSubnets: "{{ publicsubnets }}"
@@ -94,7 +94,8 @@
           HostedZoneName: "{{ publiczonename }}"
           VpcId: "{{ vpcid }}"
         tags:
-          clusterid: "{{ clusterid }}"
+          clustername: "{{ clustername }}"
+          infraid: "{{ infraid }}"
       when:
         - ( state is not defined ) or ( 'absent' not in state )
       register: cluster_infra_stack
@@ -105,17 +106,18 @@
 
     - name: "{{ 'Create' if (state is undefined or 'absent' not in state) else 'Terminate' }} UPI Security Elements (Security Groups & IAM)"
       cloudformation:
-        stack_name: "{{ clusterid }}-cluster-security"
+        stack_name: "{{ infraid }}-cluster-security"
         state: "{{ state | default('present') }}"
         region: "{{ region }}"
         template: "files/cloudformation/03_cluster_security.yaml"
         template_parameters:
-          ClusterName: "{{ clusterid }}"
+          InfrastructureName: "{{ infraid }}"
           PrivateSubnets: "{{ privatesubnets}}"
           VpcId: "{{ vpcid }}"
           VpcCidr: "{{ vpccidr }}"
         tags:
-          clusterid: "{{ clusterid }}"
+          clustername: "{{ clustername }}"
+          infraid: "{{ infraid }}"
       when:
         - ( state is not defined ) or ( 'absent' not in state )
       register: cluster_security_stack
@@ -125,13 +127,13 @@
 
     - name: "{{ 'Create' if (state is undefined or 'absent' not in state) else 'Terminate' }} UPI Bootstrap (EC2 Instance, Security Groups and IAM)"
       cloudformation:
-        stack_name: "{{ clusterid }}-cluster-bootstrap"
+        stack_name: "{{ infraid }}-cluster-bootstrap"
         state: "{{ state | default('present') }}"
         region: "{{ region }}"
         template: "files/cloudformation/04_cluster_bootstrap.yaml"
         template_parameters:
-          BootstrapIgnitionLocation: s3://{{ clusterid }}-bootstrap//bootstrap.ign
-          ClusterName: "{{ clusterid }}"
+          InfrastructureName: "{{ infraid }}"
+          BootstrapIgnitionLocation: s3://{{ infraid }}-bootstrap//bootstrap.ign
           VpcId: "{{ vpcid }}"
           AutoRegisterELB: "yes"
           AllowedBootstrapSshCidr: "0.0.0.0/0"
@@ -143,18 +145,19 @@
           InternalServiceTargetGroupArn: "{{ cluster_infra_stack.stack_outputs.InternalServiceTargetGroupArn }}"
           RegisterNlbIpTargetsLambdaArn: "{{ cluster_infra_stack.stack_outputs.RegisterNlbIpTargetsLambda }}"
         tags:
-          clusterid: "{{ clusterid }}"
+          clustername: "{{ clustername }}"
+          infraid: "{{ infraid }}"
       when:
         - ( state is not defined ) or ( 'absent' not in state )
 
     - name: "{{ 'Create' if (state is undefined or 'absent' not in state) else 'Terminate' }} UPI Node Launch (EC2 master instances)"
       cloudformation:
-        stack_name: "{{ clusterid }}-cluster-master-nodes"
+        stack_name: "{{ infraid }}-cluster-master-nodes"
         state: "{{ state | default('present') }}"
         region: "{{ region }}"
         template: "files/cloudformation/05_cluster_master_nodes.yaml"
         template_parameters:
-          ClusterName: "{{ clusterid }}"
+          InfrastructureName: "{{ infraid }}"
           AutoRegisterELB: "yes"
           MasterSecurityGroupId: "{{ cluster_security_stack.stack_outputs.MasterSecurityGroupId }}"
           Master0Subnet: "{{ privatesubnets.split(',')[0] }}"
@@ -168,77 +171,80 @@
           InternalServiceTargetGroupArn: "{{ cluster_infra_stack.stack_outputs.InternalServiceTargetGroupArn }}"
           RegisterNlbIpTargetsLambdaArn: "{{ cluster_infra_stack.stack_outputs.RegisterNlbIpTargetsLambda }}"
           AutoRegisterDNS: "yes"
-          IgnitionLocation: "https://api.{{ clusterid }}.{{ publiczonename }}:22623/config/master"
+          IgnitionLocation: "https://api.{{ clustername }}.{{ publiczonename }}:22623/config/master"
           PrivateHostedZoneId: "{{ privatezoneid }}"
 #this is confusing but right for in some cases. in others use the privatezonename var
-          PrivateHostedZoneName: "{{ clusterid }}.{{ publiczonename }}"
+          PrivateHostedZoneName: "{{ clustername }}.{{ publiczonename }}"
           CertificateAuthorities: "{{ master_ignition.ignition.security.tls.certificateAuthorities[0].source }}"
         tags:
-          clusterid: "{{ clusterid }}"
+          clustername: "{{ clustername }}"
+          infraid: "{{ infraid }}"
       when:
         - ( state is not defined ) or ( 'absent' not in state )
 
     - name: tag subnets
       shell: |
-        aws ec2 create-tags --resources "{{ publicsubnets.split(',')[0] }}" --tags Key=kubernetes.io/cluster/{{ clusterid }},Value=shared
-        aws ec2 create-tags --resources "{{ publicsubnets.split(',')[1] }}" --tags Key=kubernetes.io/cluster/{{ clusterid }},Value=shared
-        aws ec2 create-tags --resources "{{ publicsubnets.split(',')[2] }}" --tags Key=kubernetes.io/cluster/{{ clusterid }},Value=shared
+        aws ec2 create-tags --resources "{{ publicsubnets.split(',')[0] }}" --tags Key=kubernetes.io/cluster/{{ infraid }},Value=shared
+        aws ec2 create-tags --resources "{{ publicsubnets.split(',')[1] }}" --tags Key=kubernetes.io/cluster/{{ infraid }},Value=shared
+        aws ec2 create-tags --resources "{{ publicsubnets.split(',')[2] }}" --tags Key=kubernetes.io/cluster/{{ infraid }},Value=shared
       #with_sequence: start=0 count=3
 
-    - name: "Check if /tmp/{{ clusterid }}/bootstrap-complete exists"
+    - name: "Check if /tmp/{{ clustername }}/bootstrap-complete exists"
       stat:
-        path: /tmp/{{ clusterid }}/bootstrap-complete
+        path: /tmp/{{ clustername }}/bootstrap-complete
       register: bootstrap_result
 
     - name: Wait until bootstrap is complete
       shell: |
         set -e
-        openshift-install user-provided-infrastructure bootstrap-complete --dir=/tmp/{{ clusterid }}
-        touch /tmp/{{ clusterid }}/bootstrap-complete
+        openshift-install user-provided-infrastructure bootstrap-complete --dir=/tmp/{{ clustername }}
+        touch /tmp/{{ clustername }}/bootstrap-complete
       when: bootstrap_result.stat.exists == False
 
     - name: approve master certificates
       shell: |
-        export KUBECONFIG=/tmp/{{ clusterid }}/auth/kubeconfig
+        export KUBECONFIG=/tmp/{{ clustername }}/auth/kubeconfig
         oc adm certificate approve $(oc get csr -o=jsonpath="{..metadata.name}")
       ignore_errors: yes
 
+    - fail:
+
     - name: delete broken machine and machineset definitions
       shell: |
-        export KUBECONFIG=/tmp/{{ clusterid }}/auth/kubeconfig
-        oc -n openshift-machine-api delete machineset -l machine.openshift.io/cluster-api-cluster!={{ clusterid }}
-        oc -n openshift-machine-api delete machine    -l machine.openshift.io/cluster-api-cluster!={{ clusterid }}
+        export KUBECONFIG=/tmp/{{ clustername }}/auth/kubeconfig
+        #oc -n openshift-machine-api delete machineset -l machine.openshift.io/cluster-api-cluster!={{ clustername }}
+        #oc -n openshift-machine-api delete machine    -l machine.openshift.io/cluster-api-machine-role=master
 
     - name: render machineset template
       template:
         src: files/machinesets.yaml.j2
-        dest: /tmp/{{ clusterid }}/machineset-{{ item.value }}.yaml
+        dest: /tmp/{{ clustername }}/machineset-{{ item.value }}.yaml
       with_dict: {a: 0, b: 1, c: 2}
 
     - name: import machinesets
       shell: |
-        export KUBECONFIG=/tmp/{{ clusterid }}/auth/kubeconfig
-        oc -n openshift-machine-api create -f /tmp/{{ clusterid }}/machineset-{{ item }}.yaml
+        export KUBECONFIG=/tmp/{{ clustername }}/auth/kubeconfig
+        oc -n openshift-machine-api create -f /tmp/{{ clustername }}/machineset-{{ item }}.yaml
       with_sequence: start=0 count=3
       ignore_errors: yes
 
     - name: render DNS settings
       template:
         src: files/dnses.yaml.j2
-        dest: /tmp/{{ clusterid }}/dnses.yaml
+        dest: /tmp/{{ clustername }}/dnses.yaml
 
     - name: fix dns settings
       shell: |
-        export KUBECONFIG=/tmp/{{ clusterid }}/auth/kubeconfig
-        oc replace -f /tmp/{{ clusterid }}/dnses.yaml
+        export KUBECONFIG=/tmp/{{ clustername }}/auth/kubeconfig
+        oc replace -f /tmp/{{ clustername }}/dnses.yaml
         
     - name: workaround for missing kubeadmin-password file
       copy:
-        dest: "/tmp/{{ clusterid }}/auth/kubeadmin-password"
+        dest: "/tmp/{{ clustername }}/auth/kubeadmin-password"
         content: "REDACTED, use kubeconfig instead"
         
     - name: Wait until install is complete
-      command: openshift-install user-provided-infrastructure finish --dir=/tmp/{{ clusterid }}
+      command: openshift-install user-provided-infrastructure finish --dir=/tmp/{{ clustername }}
 
 
 ...

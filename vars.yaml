@@ -1,0 +1,15 @@
+region: "us-west-2"
+clustername: "foobar"
+publiczoneid: "ZOC70SORUQC4ZO"
+publiczonename: "ocp4.aws.example.com"
+privatezoneid: "ZB5JSFHSIEHVAG"
+privatezonename: "aws.example.com"
+# subnet order matters, needs to be az1,az2,az3,etc
+privatesubnets: "subnet-a62e89d2f27096776,subnet-965bf47c8c64ace62,subnet-69fca4cfc562cdcca"
+publicsubnets: "subnet-a86c92536490376fd,subnet-dc4fa13075bf07989,subnet-80d0b5c13ba100d5e"
+vpcid: "vpc-bcb26f4011256a1fd"
+vpccidr: "10.30.0.0/18"
+rhcos_ami: "ami-0f7bc7f8db2db2817"
+#get from try.openshift.com
+pull_secret: '{"auths":{"cloud.openshift.com":{"auth":"b3BjRsRVVSdnA..... example.com"}}}'
+

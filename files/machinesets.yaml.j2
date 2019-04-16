@@ -2,24 +2,24 @@ apiVersion: machine.openshift.io/v1beta1
 kind: MachineSet
 metadata:
   labels:
-    machine.openshift.io/cluster-api-cluster: {{ clusterid }}
+    machine.openshift.io/cluster-api-cluster: {{ infraid }}
     machine.openshift.io/cluster-api-machine-role: worker
     machine.openshift.io/cluster-api-machine-type: worker
-  name: {{ clusterid }}-worker-{{ region }}{{item.key}}
+  name: {{ infraid }}-worker-{{ region }}{{item.key}}
   namespace: openshift-machine-api
 spec:
   replicas: 1
   selector:
     matchLabels:
-      machine.openshift.io/cluster-api-cluster: {{ clusterid }}
-      machine.openshift.io/cluster-api-machineset: {{ clusterid }}-worker-{{ region }}{{item.key}}
+      machine.openshift.io/cluster-api-cluster: {{ infraid }}
+      machine.openshift.io/cluster-api-machineset: {{ infraid }}-worker-{{ region }}{{item.key}}
   template:
     metadata:
       labels:
-        machine.openshift.io/cluster-api-cluster: {{ clusterid }}
+        machine.openshift.io/cluster-api-cluster: {{ infraid }}
         machine.openshift.io/cluster-api-machine-role: worker
         machine.openshift.io/cluster-api-machine-type: worker
-        machine.openshift.io/cluster-api-machineset: {{ clusterid }}-worker-{{ region }}{{item.key}}
+        machine.openshift.io/cluster-api-machineset: {{ infraid }}-worker-{{ region }}{{item.key}}
     spec:
       providerSpec:
         value:
@@ -53,7 +53,7 @@ spec:
               values:
               - "{{ privatesubnets.split(',')[item.value] }}"
           tags:
-          - name: kubernetes.io/cluster/{{ clusterid }}
+          - name: kubernetes.io/cluster/{{ infraid }}
             value: owned
           - name: auto_shut_bool
             value: "True"
