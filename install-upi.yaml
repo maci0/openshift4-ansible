@@ -182,6 +182,8 @@
       when:
         - ( state is not defined ) or ( 'absent' not in state )
 
+#TODO: change master ec2 instance termination protection to true and then remove old machine api objects after
+
     - name: tag public subnets
       shell: |
         aws ec2 create-tags --resources "{{ publicsubnets.split(',')[0] }}" --tags Key=kubernetes.io/cluster/{{ infraid }},Value=shared
