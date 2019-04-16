@@ -92,7 +92,7 @@ Resources:
     Type: AWS::Route53::RecordSetGroup
     Properties:
       Comment: Alias record for the API server
-      HostedZoneId: !Ref PrivateZoneId
+      HostedZoneId: !Ref PublicZoneId
       RecordSets:
       - Name:
           !Join [
@@ -108,7 +108,7 @@ Resources:
     Type: AWS::Route53::RecordSetGroup
     Properties:
       Comment: Alias record for the API server
-      HostedZoneId: !Ref PublicZoneId
+      HostedZoneId: !Ref PrivateZoneId
       RecordSets:
       - Name:
           !Join [
