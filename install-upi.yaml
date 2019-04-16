@@ -182,11 +182,18 @@
       when:
         - ( state is not defined ) or ( 'absent' not in state )
 
-    - name: tag subnets
+    - name: tag public subnets
       shell: |
         aws ec2 create-tags --resources "{{ publicsubnets.split(',')[0] }}" --tags Key=kubernetes.io/cluster/{{ infraid }},Value=shared
         aws ec2 create-tags --resources "{{ publicsubnets.split(',')[1] }}" --tags Key=kubernetes.io/cluster/{{ infraid }},Value=shared
         aws ec2 create-tags --resources "{{ publicsubnets.split(',')[2] }}" --tags Key=kubernetes.io/cluster/{{ infraid }},Value=shared
+      #with_sequence: start=0 count=3
+
+    - name: tag private subnets
+      shell: |
+        aws ec2 create-tags --resources "{{ privatesubnets.split(',')[0] }}" --tags Key=kubernetes.io/role/internal-elb,Value=""
+        aws ec2 create-tags --resources "{{ privatesubnets.split(',')[1] }}" --tags Key=kubernetes.io/role/internal-elb,Value=""
+        aws ec2 create-tags --resources "{{ privatesubnets.split(',')[2] }}" --tags Key=kubernetes.io/role/internal-elb,Value=""
       #with_sequence: start=0 count=3
 
     - name: "Check if /tmp/{{ clustername }}/bootstrap-complete exists"
@@ -204,7 +211,7 @@
     - name: "Check if /tmp/{{ clustername }}/bootstrap-complete exists"
       stat:
         path: /tmp/{{ clustername }}/finish
-      register: finish_result
+      register: finish
 
     - name: approve master certificates
       shell: |
