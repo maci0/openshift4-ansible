@@ -1,0 +1,5 @@
+- name: "{{ 'Create' if (state is undefined or 'absent' not in state) else 'Terminate' }} cluster install config directory"
+  file:
+    path: /tmp/{{ clusterid }}
+    state: "{{ state | default('directory') }}"
+    mode: 0755

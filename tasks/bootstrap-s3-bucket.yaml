@@ -1,0 +1,9 @@
+- name: "{{ 'Create' if (state is undefined or 'absent' not in state) else 'Terminate' }} S3 bucket ( bootstrap config )"
+  s3_bucket:
+    name: "{{ infraid }}-bootstrap"
+    region: "{{ region }}"
+    state: "{{ state | default('present') }}"
+    force: "{{ 'no' if (state is undefined or 'absent' not in state) else 'yes' }}"
+    tags: "{{ {'kubernetes.io/cluster/' ~ infraid: 'owned', 'clusterid': infraid} }}"
+  retries: 3
+  delay: 3
