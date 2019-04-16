@@ -92,7 +92,7 @@ Resources:
     Type: AWS::Route53::RecordSetGroup
     Properties:
       Comment: Alias record for the API server
-      PublicZoneId: !Ref PublicZoneId
+      HostedZoneId: !Ref PrivateZoneId
       RecordSets:
       - Name:
           !Join [
@@ -101,14 +101,14 @@ Resources:
           ]
         Type: A
         AliasTarget:
-          PublicZoneId: !GetAtt ExtApiElb.CanonicalPublicZoneId
+          HostedZoneId: !GetAtt ExtApiElb.CanonicalHostedZoneID
           DNSName: !GetAtt ExtApiElb.DNSName
 
   InternalApiServerRecord:
     Type: AWS::Route53::RecordSetGroup
     Properties:
       Comment: Alias record for the API server
-      PublicZoneId: !Ref PrivateZoneId
+      HostedZoneId: !Ref PublicZoneId
       RecordSets:
       - Name:
           !Join [
@@ -117,7 +117,7 @@ Resources:
           ]
         Type: A
         AliasTarget:
-          PublicZoneId: !GetAtt IntApiElb.CanonicalPublicZoneId
+          HostedZoneId: !GetAtt IntApiElb.CanonicalHostedZoneID
           DNSName: !GetAtt IntApiElb.DNSName
 
   ExternalApiListener:
