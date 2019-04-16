@@ -17,7 +17,8 @@
     rhcos_ami: "ami-d9430bd57f96ad9e9"
 #get from try.openshift.com
     pull_secret: '{"auths":{"cloud.openshift.com":{"auth":"b3BjRsRVVSdnA..... example.com"}}}'
-
+# replace with your public SSH key for troubleshooting
+    ssh_key: "ssh-rsa AAAAB3... user@example.com"
 
 
   tasks:
