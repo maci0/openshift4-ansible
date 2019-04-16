@@ -7,10 +7,10 @@ Parameters:
     ConstraintDescription: Cluster name must be alphanumeric, start with a letter and a maximum of 32 characters
     Description: A short, representative cluster name to use for hostnames, etc.
     Type: String
-  PublicZoneId:
+  HostedZoneId:
     Description: The Route53 public zone ID to register the targets with (e.g Z21IXYZABCZ2A4)
     Type: String
-  PublicZoneName:
+  HostedZoneName:
     Description: The Route53 zone to register the targets with (No trailing dot - e.g. mycorp.com)
     Type: String
     Default: "example.com"
@@ -43,8 +43,8 @@ Metadata:
     - Label:
         default: "DNS"
       Parameters:
-      - PublicZoneName
-      - PublicZoneId
+      - HostedZoneName
+      - HostedZoneId
       - PrivateZoneId
     ParameterLabels:
       ClusterName:
@@ -55,9 +55,9 @@ Metadata:
         default: "Public Subnets"
       PrivateSubnets:
         default: "Private Subnets"
-      PublicZoneName:
+      HostedZoneName:
         default: "Public Hosted Zone Name"
-      PublicZoneId:
+      HostedZoneId:
         default: "Public Hosted Zone ID"
 
 Resources:
@@ -83,7 +83,7 @@ Resources:
 #    Properties:
 #      HostedZoneConfig:
 #        Comment: "Managed by CloudFormation"
-#      Name: !Join [".", [!Ref ClusterName, !Ref PublicZoneName]]
+#      Name: !Join [".", [!Ref ClusterName, !Ref HostedZoneName]]
 #      VPCs:
 #      - VPCId: !Ref VpcId
 #        VPCRegion: !Ref "AWS::Region"
@@ -92,12 +92,12 @@ Resources:
     Type: AWS::Route53::RecordSetGroup
     Properties:
       Comment: Alias record for the API server
-      HostedZoneId: !Ref PublicZoneId
+      HostedZoneId: !Ref HostedZoneId
       RecordSets:
       - Name:
           !Join [
             ".",
-            ["api", !Ref ClusterName, !Join ["", [!Ref PublicZoneName, "."]]],
+            ["api", !Ref ClusterName, !Join ["", [!Ref HostedZoneName, "."]]],
           ]
         Type: A
         AliasTarget:
@@ -113,7 +113,7 @@ Resources:
       - Name:
           !Join [
             ".",
-            ["api", !Ref ClusterName, !Join ["", [!Ref PublicZoneName, "."]]],
+            ["api", !Ref ClusterName, !Join ["", [!Ref HostedZoneName, "."]]],
           ]
         Type: A
         AliasTarget:
@@ -258,7 +258,7 @@ Resources:
       Timeout: 120
 
 Outputs:
-#  PrivatePublicZoneId:
+#  PrivateHostedZoneId:
 #    Description: Hosted zone ID for the private DNS - needed for private records
 #    Value: !Ref IntDns
   ExternalApiLoadBalancerName:
@@ -269,7 +269,7 @@ Outputs:
     Value: !GetAtt IntApiElb.LoadBalancerFullName
   ApiServerDnsName:
     Description: Full hostname of the API server - Needed for ignition configs
-    Value: !Join [".", ["api", !Ref ClusterName, !Ref PublicZoneName]]
+    Value: !Join [".", ["api", !Ref ClusterName, !Ref HostedZoneName]]
   RegisterNlbIpTargetsLambda:
     Description: Lambda ARN useful to help register/deregister IP targets for these load balancers
     Value: !GetAtt RegisterNlbIpTargets.Arn

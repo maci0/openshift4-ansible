@@ -90,8 +90,8 @@
           PrivateSubnets: "{{ privatesubnets}}"
           PrivateZoneId: "{{ privatezoneid }}"
           PublicSubnets: "{{ publicsubnets }}"
-          PublicZoneId: "{{ publiczoneid }}"
-          PublicZoneName: "{{ publiczonename }}"
+          HostedZoneId: "{{ publiczoneid }}"
+          HostedZoneName: "{{ publiczonename }}"
           VpcId: "{{ vpcid }}"
         tags:
           clusterid: "{{ clusterid }}"
