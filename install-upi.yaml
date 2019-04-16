@@ -221,12 +221,12 @@
         dest: /tmp/{{ clustername }}/machineset-{{ item.value }}.yaml
       with_dict: {a: 0, b: 1, c: 2}
 
-    - name: import machinesets
-      shell: |
-        export KUBECONFIG=/tmp/{{ clustername }}/auth/kubeconfig
-        oc -n openshift-machine-api create -f /tmp/{{ clustername }}/machineset-{{ item }}.yaml
-      with_sequence: start=0 count=3
-      ignore_errors: yes
+#    - name: import machinesets
+#      shell: |
+#        export KUBECONFIG=/tmp/{{ clustername }}/auth/kubeconfig
+#        oc -n openshift-machine-api create -f /tmp/{{ clustername }}/machineset-{{ item }}.yaml
+#      with_sequence: start=0 count=3
+#      ignore_errors: yes
 
     - name: render DNS settings
       template:
