@@ -55,10 +55,11 @@ spec:
           tags:
           - name: kubernetes.io/cluster/{{ infraid }}
             value: owned
+{% if automatic_shutdown is defined %}
           - name: auto_shut_bool
             value: "{{ automatic_shutdown }}"
+{% endif %}
           userDataSecret:
             name: worker-user-data
       versions:
         kubelet: ""
-

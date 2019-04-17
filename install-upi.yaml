@@ -148,6 +148,7 @@
         tags:
           clustername: "{{ clustername }}"
           infraid: "{{ infraid }}"
+          auto_shut_bool: "{{ automatic_shutdown | default(omit) }}"
 
 #TODO: change master ec2 instance termination protection to true and then remove old machine api objects after
 
