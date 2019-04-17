@@ -32,4 +32,5 @@ pull_secret: '{"auths":{"cloud.openshift.com":{"auth":"b3BjRsRVVSdnA..... exampl
 # Set to "True" to mark EC2 instances for automatic shutdown. The
 # shutdown has to be done by an external script that loops over all
 # EC2 instances and looks for the "auto_shut_bool" tag.
+# This is optional either set or comment out.
 automatic_shutdown: "False"
