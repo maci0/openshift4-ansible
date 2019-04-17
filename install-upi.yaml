@@ -4,6 +4,8 @@
   hosts: localhost
   vars_files:
     - "{{ playbook_dir }}/vars.yaml"
+  environment:
+    KUBECONFIG: /tmp/{{ clustername }}/auth/kubeconfig
 
   tasks:
     - name: create cluster install config directory
@@ -185,18 +187,12 @@
 #TODO: change master ec2 instance termination protection to true and then remove old machine api objects after
 
     - name: tag public subnets
-      shell: |
-        aws ec2 create-tags --resources "{{ publicsubnets.split(',')[0] }}" --tags Key=kubernetes.io/cluster/{{ infraid }},Value=shared
-        aws ec2 create-tags --resources "{{ publicsubnets.split(',')[1] }}" --tags Key=kubernetes.io/cluster/{{ infraid }},Value=shared
-        aws ec2 create-tags --resources "{{ publicsubnets.split(',')[2] }}" --tags Key=kubernetes.io/cluster/{{ infraid }},Value=shared
-      #with_sequence: start=0 count=3
+      command: aws ec2 create-tags --resources {{ item }} --tags Key=kubernetes.io/cluster/{{ infraid }},Value=shared
+      with_items: "{{ publicsubnets.split(',') }}"
 
     - name: tag private subnets
-      shell: |
-        aws ec2 create-tags --resources "{{ privatesubnets.split(',')[0] }}" --tags Key=kubernetes.io/role/internal-elb,Value=""
-        aws ec2 create-tags --resources "{{ privatesubnets.split(',')[1] }}" --tags Key=kubernetes.io/role/internal-elb,Value=""
-        aws ec2 create-tags --resources "{{ privatesubnets.split(',')[2] }}" --tags Key=kubernetes.io/role/internal-elb,Value=""
-      #with_sequence: start=0 count=3
+      command: aws ec2 create-tags --resources {{ item }} --tags Key=kubernetes.io/role/internal-elb,Value=""
+      with_items: "{{ privatesubnets.split(',') }}"
 
     - name: "Check if /tmp/{{ clustername }}/bootstrap-complete exists"
       stat:
@@ -204,9 +200,8 @@
       register: bootstrap_result
 
     - name: Wait until bootstrap is complete
-      shell: |
-        set -e
-        openshift-install user-provided-infrastructure bootstrap-complete --dir=/tmp/{{ clustername }}
+      shell: >
+        openshift-install user-provided-infrastructure bootstrap-complete --dir=/tmp/{{ clustername }} &&
         touch /tmp/{{ clustername }}/bootstrap-complete
       when: bootstrap_result.stat.exists == False
 
@@ -216,9 +211,7 @@
       register: finish
 
     - name: approve master certificates
-      shell: |
-        export KUBECONFIG=/tmp/{{ clustername }}/auth/kubeconfig
-        oc adm certificate approve $(oc get csr -o=jsonpath="{..metadata.name}")
+      command: oc adm certificate approve $(oc get csr -o=jsonpath="{..metadata.name}")
       ignore_errors: yes
       when: finish.stat.exists == False
 
@@ -230,18 +223,14 @@
       when: finish.stat.exists == False
 
     - name: import machinesets
-      shell: |
-        export KUBECONFIG=/tmp/{{ clustername }}/auth/kubeconfig
-        oc -n openshift-machine-api replace -f /tmp/{{ clustername }}/machineset-{{ item }}.yaml
+      command: oc -n openshift-machine-api replace -f /tmp/{{ clustername }}/machineset-{{ item }}.yaml
       with_sequence: start=0 count=3
       ignore_errors: yes
       when: finish.stat.exists == False
 
 #todo only do this on first install
     - name: delete broken machines
-      shell: |
-        export KUBECONFIG=/tmp/{{ clustername }}/auth/kubeconfig
-        oc -n openshift-machine-api delete machine    -l machine.openshift.io/cluster-api-machine-role=worker
+      command: oc -n openshift-machine-api delete machine -l machine.openshift.io/cluster-api-machine-role=worker
       when: finish.stat.exists == False
 
     - name: render DNS settings
@@ -251,9 +240,7 @@
       when: finish.stat.exists == False
 
     - name: fix dns settings
-      shell: |
-        export KUBECONFIG=/tmp/{{ clustername }}/auth/kubeconfig
-        oc replace -f /tmp/{{ clustername }}/dnses.yaml
+      command: oc replace -f /tmp/{{ clustername }}/dnses.yaml
       when: finish.stat.exists == False
         
     - name: workaround for missing kubeadmin-password file
@@ -261,16 +248,20 @@
         dest: "/tmp/{{ clustername }}/auth/kubeadmin-password"
         content: "REDACTED, use kubeconfig instead"
 
+    - name: Wait for ingress controller
+      command: oc get -n openshift-ingress-operator ingresscontroller/default
+      register: ingress_controller
+      until: ingress_controller.rc == 0
+      retries: 60
+      delay: 10
+
     - name: Scale ingress controller replicas
-      command: oc -n openshift-ingress-operator patch ingresscontroller/default -p '{"spec":{"replicas":6}}' --type merge
-      environment:
-        KUBECONFIG: /tmp/{{ clustername }}/auth/kubeconfig
+      command: oc patch -n openshift-ingress-operator -p '{"spec":{"replicas":6}}' --type merge ingresscontroller/default
       when: finish.stat.exists == False
 
     - name: Wait until install is complete
-      shell: |
-        openshift-install user-provided-infrastructure finish --dir=/tmp/{{ clustername }}
+      shell: >
+        openshift-install user-provided-infrastructure finish --dir=/tmp/{{ clustername }} &&
         touch /tmp/{{ clustername }}/finish
       when: finish.stat.exists == False
-
 ...
