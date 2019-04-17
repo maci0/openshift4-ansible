@@ -35,7 +35,7 @@ platform:
   aws:
     region: "{{ region }}"
     userTags:
-      auto_shut_bool: "True"
+      auto_shut_bool: "{{ automatic_shutdown }}"
 pullSecret: '{{ pull_secret }}'
 {% if ssh_key is defined %}
 sshKey: "{{ ssh_key }}"
