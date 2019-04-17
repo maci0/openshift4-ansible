@@ -16,7 +16,7 @@ To set up a bastion host follow these steps:
 Start with a RHEL7 Instance.
 
 Become root and install the needed tools.
-```
+```bash
 sudo su -
 
 yum -y install unzip python wget
@@ -51,7 +51,7 @@ exit
 
 As user:
 
-```
+```bash
 source /etc/bash_completion.d/openshift
 
 export AWSKEY=MYSUPERSECRETKEY
@@ -73,7 +73,7 @@ aws sts get-caller-identity
 
 Modify `vars.yaml`
 
-```
+```bash
 source /usr/local/aws/activate
 
 ansible-playbook install-upi.yaml
