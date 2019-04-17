@@ -249,7 +249,6 @@
             stack_name: "{{ infraid }}-cluster-bootstrap"
             region: "{{ region }}"
             state: absent
-          when: boostrap_cleanup
 
         - include_tasks: tasks/bootstrap-s3-bucket.yaml
           vars:
