@@ -133,7 +133,7 @@
           Master1Subnet: "{{ privatesubnets.split(',')[1] }}"
           Master2Subnet: "{{ privatesubnets.split(',')[2] }}"
           MasterInstanceProfileName: "{{ cluster_security_stack.stack_outputs.MasterInstanceProfile }}"
-          MasterInstanceType: "m4.2xlarge"
+          MasterInstanceType: "{{ master_instance }}"
           RhcosAmi: "{{ rhcos_ami }}"
           ExternalApiTargetGroupArn: "{{ cluster_infra_stack.stack_outputs.ExternalApiTargetGroupArn }}"
           InternalApiTargetGroupArn: "{{ cluster_infra_stack.stack_outputs.InternalApiTargetGroupArn }}"
