@@ -241,4 +241,18 @@
         openshift-install user-provided-infrastructure finish --dir=/tmp/{{ clustername }} &&
         touch /tmp/{{ clustername }}/finish
       when: finish.stat.exists == False
+
+    - name: Terminate bootstrap resources
+      block:
+        - name: Terminate bootstrap CloudFormation stack
+          cloudformation:
+            stack_name: "{{ infraid }}-cluster-bootstrap"
+            region: "{{ region }}"
+            state: absent
+          when: boostrap_cleanup
+
+        - include_tasks: tasks/bootstrap-s3-bucket.yaml
+          vars:
+            state: absent
+      when: boostrap_cleanup
 ...
