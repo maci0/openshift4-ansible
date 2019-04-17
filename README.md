@@ -6,12 +6,18 @@ Some information has to be provided. Mainly information about your aws VPC, your
 
 ## Setup
 
+Create an administrative IAM user to perform the install.
+See https://github.com/openshift/installer/blob/master/docs/user/aws/iam.md
+
+This user can be removed after the installation
+
 To set up a bastion host follow these steps:
 
 Start with a RHEL7 Instance.
 
 Become root and install the needed tools.
-```sudo su -
+```
+sudo su -
 
 yum -y install unzip python wget
 
