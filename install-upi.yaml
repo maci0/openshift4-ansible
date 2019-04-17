@@ -244,6 +244,15 @@
         oc -n openshift-machine-api delete machine    -l machine.openshift.io/cluster-api-machine-role=worker
       when: finish.stat.exists == False
 
+    - name: Fix master machine loadbalancer, securitygroup and instanceprofile setting
+      shell: |
+        export KUBECONFIG=/tmp/{{ clustername }}/auth/kubeconfig
+        oc patch machine {{ infraid }}-master-{{ item }} -p '{"spec":{"providerSpec":{"value":{"loadBalancers":[{"name": "api-int-{{ clustername }}-{{ region }}", "type": "network"},{"name": "api-ext-{{ clustername }}-{{ region }}", "type": "network"}]}}}}' --type merge
+        oc patch machine {{ infraid }}-master-{{ item }} -p '{"spec":{"providerSpec":{"value":{"securityGroups":[{"filters":[{"name": "group-id", "values":["{{ cluster_security_stack.stack_outputs.MasterSecurityGroupId }}"]}]}]}}}}' --type merge
+        oc patch machine {{ infraid }}-master-{{ item }} -p '{"spec":{"providerSpec":{"value":{"subnet":[{"filters":[{"name": "subnet-id", "values":["{{ privatesubnets.split(',')[item | int] }}"]}]}]}}}}' --type merge
+      with_sequence: start=0 count=3
+
+
     - name: render DNS settings
       template:
         src: files/dnses.yaml.j2
