@@ -6,9 +6,9 @@ compute:
     aws:
       type: {{ worker_instance }}
       zones:
-      - us-west-2a
-      - us-west-2b
-      - us-west-2c
+      - "{{ region }}a"
+      - "{{ region }}b"
+      - "{{ region }}c"
   replicas: 3
 controlPlane:
   name: master
@@ -16,9 +16,9 @@ controlPlane:
     aws:
       type: {{ master_instance }}
       zones:
-      - us-west-2a
-      - us-west-2b
-      - us-west-2c
+      - "{{ region }}a"
+      - "{{ region }}b"
+      - "{{ region }}c"
   replicas: 3
 metadata:
   creationTimestamp: null
