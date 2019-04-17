@@ -1,0 +1,139 @@
+---
+- name: Uninstall OpenShift 4
+  gather_facts: false
+  hosts: localhost
+  vars_files:
+    - vars.yaml
+  vars:
+    state: absent
+  tasks:
+    - include_tasks: tasks/get_infraid.yaml
+    - include_tasks: tasks/bootstrap-s3-bucket.yaml
+
+    - name: Terminate EC2 CloudFormation stacks
+      cloudformation:
+        stack_name: "{{ item }}"
+        region: "{{ region }}"
+        state: absent
+      with_items:
+        - "{{ infraid }}-cluster-master-nodes"
+        - "{{ infraid }}-cluster-bootstrap"
+
+    # Terminate EC2 instances created by OpenShift.
+
+    - name: Get EC2 instances
+      ec2_instance_facts:
+        region: "{{ region }}"
+        filters: "tag:kubernetes.io/cluster/{{ infraid }}=owned"
+      register: ec2_instances
+
+    # We check the kubernetes.io/cluster tag again to make sure that
+    # we don't delete the wrong EC2 instances. This is in case the
+    # "filters" parameter for ec2_instance_facts stops working in the
+    # future for some reason.
+    - name: Terminate EC2 instances
+      ec2:
+        instance_ids: "{{ item['instance_id'] }}"
+        region: "{{ region }}"
+        state: absent
+        wait: yes
+      when:
+        - "'kubernetes.io/cluster/' ~ infraid in item['tags']"
+        - item['tags']['kubernetes.io/cluster/' ~ infraid] == 'owned'
+        - item['state']['name'] != 'terminated'
+      with_items: "{{ ec2_instances.instances }}"
+
+    - name: Terminate other CloudFormation stacks
+      cloudformation:
+        stack_name: "{{ item }}"
+        region: "{{ region }}"
+        state: absent
+      with_items:
+        - "{{ infraid }}-cluster-security"
+        - "{{ infraid }}-cluster-infra"
+
+    # Terminate load balancers and security groups created by
+    # OpenShift.
+
+    - name: Get ELBs
+      ec2_elb_facts:
+        region: "{{ region }}"
+      register: ec2_elbs
+
+    - name: Terminate ELBs
+      ec2_elb_lb:
+        name: "{{ item['name'] }}"
+        region: "{{ region }}"
+        state: absent
+        wait: yes
+      when:
+        - "'kubernetes.io/cluster/' ~ infraid in item['tags']"
+        - item['tags']['kubernetes.io/cluster/' ~ infraid] == 'owned'
+      with_items: "{{ ec2_elbs.elbs }}"
+
+    - name: Get security groups
+      ec2_group_facts:
+        region: "{{ region }}"
+        filters: "tag:kubernetes.io/cluster/{{ infraid }}=owned"
+      register: ec2_groups
+
+    - name: Terminate security groups
+      ec2_group:
+        group_id: "{{ item['group_id'] }}"
+        region: "{{ region }}"
+        state: absent
+      when:
+        - "'kubernetes.io/cluster/' ~ infraid in item['tags']"
+        - item['tags']['kubernetes.io/cluster/' ~ infraid] == 'owned'
+      with_items: "{{ ec2_groups.security_groups }}"
+
+    - name: Get public Route53 record
+      route53:
+        state: get
+        zone: "{{ publiczonename }}"
+        record: "*.apps.{{ clustername }}.{{ publiczonename }}"
+        type: A
+      register: route53_public
+
+    # The record name has to include the publiczonename even for the
+    # private zone.    
+    - name: Get private Route53 record
+      route53:
+        state: get
+        zone: "{{ privatezonename }}"
+        private_zone: yes
+        record: "*.apps.{{ clustername }}.{{ publiczonename }}"
+        type: A
+      register: route53_private
+
+    - name: Delete public Route53 records
+      route53:
+        zone: "{{ publiczonename }}"
+        record: "*.apps.{{ clustername }}.{{ publiczonename }}"
+        type: A
+        value: "{{ route53_public.set.value }}"
+        ttl: "{{ route53_public.set.ttl }}"
+        alias: true
+        alias_hosted_zone_id: "{{ route53_public.set.alias_hosted_zone_id }}"
+        state: absent
+      when: "'value' in route53_public.set"
+
+    - name: Delete private Route53 records
+      route53:
+        zone: "{{ privatezonename }}"
+        private_zone: yes
+        record: "*.apps.{{ clustername }}.{{ publiczonename }}"
+        type: A
+        value: "{{ route53_private.set.value }}"
+        ttl: "{{ route53_private.set.ttl }}"
+        alias: true
+        alias_hosted_zone_id: "{{ route53_private.set.alias_hosted_zone_id }}"
+        state: absent
+      when: "'value' in route53_private.set"
+
+    - name: Untag subnets
+      command: aws ec2 delete-tags --resources "{{ item }}" --tags Key=kubernetes.io/cluster/{{ infraid }}
+      with_items: "{{ publicsubnets.split(',') + privatesubnets.split(',') }}"
+
+    - include_tasks: tasks/installer-config-directory.yaml
+...

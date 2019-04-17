@@ -8,13 +8,7 @@
     KUBECONFIG: /tmp/{{ clustername }}/auth/kubeconfig
 
   tasks:
-    - name: create cluster install config directory
-      file:
-        path: /tmp/{{ clustername }}
-        state: "{{ state | default('directory') }}"
-        mode: 0755
-      when:
-        - ( state is not defined ) or ( 'absent' not in state )
+    - include_tasks: tasks/installer-config-directory.yaml
 
     - name: "Check if /tmp/{{ clustername }}/metadata.json exists"
       stat:
@@ -40,15 +34,7 @@
     - set_fact:
         master_ignition: "{{ result.stdout | from_json }}"
 
-    - name: read Infrastructure ID from metadata.json
-      command: cat /tmp/{{ clustername }}/metadata.json
-      register: metadata_result
-
-    - set_fact:
-        metadata_json: "{{ metadata_result.stdout | from_json }}"
-
-    - set_fact:
-        infraid: "{{ metadata_json.infraID }}"
+    - include_tasks: tasks/get_infraid.yaml
 
 #    - debug:
 #        msg: "{{ master_ignition.ignition.security.tls.certificateAuthorities[0].source }}"
@@ -57,17 +43,7 @@
 #        msg: "{{ metadata_json.infraID }}"
     
 
-
-#todo: map state absent to mode delete
-    - name: "{{ 'Create' if (state is undefined or 'absent' not in state) else 'Terminate' }} S3 bucket ( bootstrap config )"
-      aws_s3:
-        bucket: "{{ infraid }}-bootstrap"
-        region: "{{ region }}"
-        mode: "{{ state | default('create') }}"
-      retries: 3
-      delay: 3
-      when:
-        - ( state is not defined ) or ( 'absent' not in state )
+    - include_tasks: tasks/bootstrap-s3-bucket.yaml
 
     - name: upload bootstrap.ign to s3 bucket
       aws_s3:
@@ -77,13 +53,11 @@
         mode: "{{ state | default('put') }}"
       retries: 3
       delay: 3
-      when:
-        - ( state is not defined ) or ( 'absent' not in state )
 
-    - name: "{{ 'Create' if (state is undefined or 'absent' not in state) else 'Terminate' }} UPI Network Elements (Route53 & LBs)"
+    - name: Create UPI Network Elements (Route53 & LBs)
       cloudformation:
         stack_name: "{{ infraid }}-cluster-infra"
-        state: "{{ state | default('present') }}"
+        state: present
         region: "{{ region }}"
         template: "files/cloudformation/02_cluster_infra.yaml.existingvpc"
         template_parameters:
@@ -98,18 +72,15 @@
         tags:
           clustername: "{{ clustername }}"
           infraid: "{{ infraid }}"
-      when:
-        - ( state is not defined ) or ( 'absent' not in state )
       register: cluster_infra_stack
 
 #    - debug:
 #        msg: "{{ cluster_infra_stack.stack_outputs}}"
 
-
-    - name: "{{ 'Create' if (state is undefined or 'absent' not in state) else 'Terminate' }} UPI Security Elements (Security Groups & IAM)"
+    - name: Create UPI Security Elements (Security Groups & IAM)
       cloudformation:
         stack_name: "{{ infraid }}-cluster-security"
-        state: "{{ state | default('present') }}"
+        state: present
         region: "{{ region }}"
         template: "files/cloudformation/03_cluster_security.yaml"
         template_parameters:
@@ -120,17 +91,15 @@
         tags:
           clustername: "{{ clustername }}"
           infraid: "{{ infraid }}"
-      when:
-        - ( state is not defined ) or ( 'absent' not in state )
       register: cluster_security_stack
 
 #    - debug:
 #        msg: "{{ cluster_security_stack.stack_outputs.MasterSecurityGroupId }}"
 
-    - name: "{{ 'Create' if (state is undefined or 'absent' not in state) else 'Terminate' }} UPI Bootstrap (EC2 Instance, Security Groups and IAM)"
+    - name: Create UPI Bootstrap (EC2 Instance, Security Groups and IAM)
       cloudformation:
         stack_name: "{{ infraid }}-cluster-bootstrap"
-        state: "{{ state | default('present') }}"
+        state: present
         region: "{{ region }}"
         template: "files/cloudformation/04_cluster_bootstrap.yaml"
         template_parameters:
@@ -149,13 +118,11 @@
         tags:
           clustername: "{{ clustername }}"
           infraid: "{{ infraid }}"
-      when:
-        - ( state is not defined ) or ( 'absent' not in state )
 
-    - name: "{{ 'Create' if (state is undefined or 'absent' not in state) else 'Terminate' }} UPI Node Launch (EC2 master instances)"
+    - name: Create UPI Node Launch (EC2 master instances)
       cloudformation:
         stack_name: "{{ infraid }}-cluster-master-nodes"
-        state: "{{ state | default('present') }}"
+        state: present
         region: "{{ region }}"
         template: "files/cloudformation/05_cluster_master_nodes.yaml"
         template_parameters:
@@ -181,8 +148,6 @@
         tags:
           clustername: "{{ clustername }}"
           infraid: "{{ infraid }}"
-      when:
-        - ( state is not defined ) or ( 'absent' not in state )
 
 #TODO: change master ec2 instance termination protection to true and then remove old machine api objects after
 
