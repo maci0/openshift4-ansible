@@ -4,7 +4,7 @@ compute:
 - name: worker
   platform:
     aws:
-      type: m5.2xlarge
+      type: {{ worker_instance }}
       zones:
       - us-west-2a
       - us-west-2b
@@ -14,7 +14,7 @@ controlPlane:
   name: master
   platform:
     aws:
-      type: m5.xlarge
+      type: {{ master_instance }}
       zones:
       - us-west-2a
       - us-west-2b
@@ -25,12 +25,12 @@ metadata:
   name: "{{ clustername }}"
 networking:
   clusterNetwork:
-  - cidr: 10.128.0.0/14
+  - cidr: {{ clustercidr }}
     hostPrefix: 23
   machineCIDR: {{ vpccidr }}
   networkType: OpenShiftSDN
   serviceNetwork:
-  - 172.30.0.0/16
+  - {{ servicecidr }}
 platform:
   aws:
     region: "{{ region }}"
