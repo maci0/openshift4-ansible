@@ -175,8 +175,11 @@
 
     - name: approve master certificates
       command: oc adm certificate approve $(oc get csr -o=jsonpath="{..metadata.name}")
-      ignore_errors: yes
-      when: finish.stat.exists == False
+      register: oc_approve
+      retries: 12
+      delay: 10
+      until: oc_approve.rc == 0
+      when: not finish.stat.exists
 
     - name: render machineset template
       template:
