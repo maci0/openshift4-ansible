@@ -56,7 +56,7 @@ spec:
           - name: kubernetes.io/cluster/{{ infraid }}
             value: owned
           - name: auto_shut_bool
-            value: "True"
+            value: "{{ automatic_shutdown }}"
           userDataSecret:
             name: worker-user-data
       versions:
