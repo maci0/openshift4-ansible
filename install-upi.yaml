@@ -32,15 +32,7 @@
     - set_fact:
         master_ignition: "{{ result.stdout | from_json }}"
 
-    - name: read Infrastructure ID from metadata.json
-      command: cat /tmp/{{ clustername }}/metadata.json
-      register: metadata_result
-
-    - set_fact:
-        metadata_json: "{{ metadata_result.stdout | from_json }}"
-
-    - set_fact:
-        infraid: "{{ metadata_json.infraID }}"
+    - include_tasks: tasks/get_infraid.yaml
 
 #    - debug:
 #        msg: "{{ master_ignition.ignition.security.tls.certificateAuthorities[0].source }}"
