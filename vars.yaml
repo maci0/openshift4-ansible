@@ -45,3 +45,8 @@ automatic_shutdown: "False"
 # AWS bootstrap resources are deleted after a successful installation
 # if this is set to true.
 boostrap_cleanup: true
+
+# Enable this to only expose the API internally, requires ansible host to
+# be on the same network as cluster
+api_internal_only: true
+ 

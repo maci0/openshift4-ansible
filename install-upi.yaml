@@ -71,7 +71,7 @@
         stack_name: "{{ infraid }}-cluster-infra"
         state: present
         region: "{{ region }}"
-        template: "files/cloudformation/02_cluster_infra.yaml.existingvpc"
+        template: "files/cloudformation/02_cluster_infra.yaml{% if api_internal_only is sameas true %}.internalonly{% else %}.existingvpc{% endif %}"
         template_parameters:
           ClusterName: "{{ clustername }}"
           InfrastructureName: "{{ infraid }}"
@@ -110,7 +110,7 @@
         stack_name: "{{ infraid }}-cluster-bootstrap"
         state: present
         region: "{{ region }}"
-        template: "files/cloudformation/04_cluster_bootstrap.yaml"
+        template: "files/cloudformation/04_cluster_bootstrap.yaml{% if api_internal_only is sameas true %}.internalonly{% endif %}"
         template_parameters:
           InfrastructureName: "{{ infraid }}"
           BootstrapIgnitionLocation: s3://{{ infraid }}-bootstrap//bootstrap.ign
@@ -120,7 +120,7 @@
           MasterSecurityGroupId: "{{ cluster_security_stack.stack_outputs.MasterSecurityGroupId }}"
           PublicSubnet: "{{ publicsubnets.split(',')[0] }}"
           RhcosAmi: "{{ rhcos_ami }}"
-          ExternalApiTargetGroupArn: "{{ cluster_infra_stack.stack_outputs.ExternalApiTargetGroupArn }}"
+          ExternalApiTargetGroupArn: "{{ cluster_infra_stack.stack_outputs.ExternalApiTargetGroupArn if api_internal_only == 'false' else omit }}"
           InternalApiTargetGroupArn: "{{ cluster_infra_stack.stack_outputs.InternalApiTargetGroupArn }}"
           InternalServiceTargetGroupArn: "{{ cluster_infra_stack.stack_outputs.InternalServiceTargetGroupArn }}"
           RegisterNlbIpTargetsLambdaArn: "{{ cluster_infra_stack.stack_outputs.RegisterNlbIpTargetsLambda }}"
@@ -133,7 +133,7 @@
         stack_name: "{{ infraid }}-cluster-master-nodes"
         state: present
         region: "{{ region }}"
-        template: "files/cloudformation/05_cluster_master_nodes.yaml"
+        template: "files/cloudformation/05_cluster_master_nodes.yaml{% if api_internal_only is sameas true %}.internalonly{% endif %}"
         template_parameters:
           InfrastructureName: "{{ infraid }}"
           AutoRegisterELB: "yes"
@@ -144,7 +144,7 @@
           MasterInstanceProfileName: "{{ cluster_security_stack.stack_outputs.MasterInstanceProfile }}"
           MasterInstanceType: "{{ master_instance }}"
           RhcosAmi: "{{ rhcos_ami }}"
-          ExternalApiTargetGroupArn: "{{ cluster_infra_stack.stack_outputs.ExternalApiTargetGroupArn }}"
+          ExternalApiTargetGroupArn: "{{ cluster_infra_stack.stack_outputs.ExternalApiTargetGroupArn if api_internal_only == 'false' else omit }}"
           InternalApiTargetGroupArn: "{{ cluster_infra_stack.stack_outputs.InternalApiTargetGroupArn }}"
           InternalServiceTargetGroupArn: "{{ cluster_infra_stack.stack_outputs.InternalServiceTargetGroupArn }}"
           RegisterNlbIpTargetsLambdaArn: "{{ cluster_infra_stack.stack_outputs.RegisterNlbIpTargetsLambda }}"
@@ -192,33 +192,45 @@
       delay: 10
       until: oc_approve.rc == 0
       when: not finish.stat.exists
+      ignore_errors: yes
 
-    - name: render machineset template
-      template:
-        src: files/machinesets.yaml.j2
-        dest: /tmp/{{ clustername }}/machineset-{{ item.value }}.yaml
+#    - name: render machineset template
+#      template:
+#        src: files/machinesets.yaml.j2
+#        dest: /tmp/{{ clustername }}/machineset-{{ item.value }}.yaml
+#      with_dict: {a: 0, b: 1, c: 2}
+#      when: finish.stat.exists == False
+
+#    - name: import machinesets
+#      command: oc -n openshift-machine-api replace -f /tmp/{{ clustername }}/machineset-{{ item }}.yaml
+#      with_sequence: start=0 count=3
+#      ignore_errors: yes
+#      when: finish.stat.exists == False
+
+    - name: Fix worker machineset, securitygroup, subnet, ami and instanceprofile setting
+      shell: |
+        oc -n openshift-machine-api patch machineset {{ infraid }}-worker-{{ region }}{{item.key}} -p '{"spec":{"template":{"spec":{"providerSpec":{"value":{"securityGroups":[{"filters":[{"name": "group-id", "values":["{{ cluster_security_stack.stack_outputs.WorkerSecurityGroupId }}"]}]}]}}}}}}' --type merge
+        oc -n openshift-machine-api patch machineset {{ infraid }}-worker-{{ region }}{{item.key}} -p '{"spec":{"template":{"spec":{"providerSpec":{"value":{"subnet":{"filters":[{"name": "subnet-id", "values":["{{ privatesubnets.split(',')[item.value | int] }}"]}]}}}}}}}' --type merge
+        oc -n openshift-machine-api patch machineset {{ infraid }}-worker-{{ region }}{{item.key}} -p '{"spec":{"template":{"spec":{"providerSpec":{"value":{"iamInstanceProfile":{"id": "{{ cluster_security_stack.stack_outputs.WorkerInstanceProfile }}"}}}}}}}' --type merge
+        oc -n openshift-machine-api patch machineset {{ infraid }}-worker-{{ region }}{{item.key}} -p '{"spec":{"template":{"spec":{"providerSpec":{"value":{"ami":{"id": "{{ rhcos_ami }}"}}}}}}}' --type merge
       with_dict: {a: 0, b: 1, c: 2}
       when: finish.stat.exists == False
 
-    - name: import machinesets
-      command: oc -n openshift-machine-api replace -f /tmp/{{ clustername }}/machineset-{{ item }}.yaml
-      with_sequence: start=0 count=3
-      ignore_errors: yes
-      when: finish.stat.exists == False
-
-#todo only do this on first install
     - name: delete broken machines
       command: oc -n openshift-machine-api delete machine -l machine.openshift.io/cluster-api-machine-role=worker
       when: finish.stat.exists == False
 
-    - name: Fix master machine loadbalancer, securitygroupi, subnet, ami and instanceprofile setting
+    - name: Fix master machine loadbalancer, securitygroup, subnet, ami and instanceprofile setting
       shell: |
-        oc -n openshift-machine-api patch machine {{ infraid }}-master-{{ item }} -p '{"spec":{"providerSpec":{"value":{"loadBalancers":[{"name": "{{ cluster_infra_stack.stack_outputs.InternalApiLoadBalancerName.split('/')[1] }}", "type": "network"},{"name": "{{ cluster_infra_stack.stack_outputs.ExternalApiLoadBalancerName.split('/')[1] }}", "type": "network"}]}}}}' --type merge
+
+        oc -n openshift-machine-api patch machine {{ infraid }}-master-{{ item }} -p '{"spec":{"providerSpec":{"value":{"loadBalancers":[{"name": "{{ cluster_infra_stack.stack_outputs.InternalApiLoadBalancerName.split('/')[1] }}", "type": "network"}{% if api_internal_only != true %},{"name": "{{ cluster_infra_stack.stack_outputs.ExternalApiLoadBalancerName.split('/')[1] }}", "type": "network"}{% endif %}]}}}}' --type merge
         oc -n openshift-machine-api patch machine {{ infraid }}-master-{{ item }} -p '{"spec":{"providerSpec":{"value":{"securityGroups":[{"filters":[{"name": "group-id", "values":["{{ cluster_security_stack.stack_outputs.MasterSecurityGroupId }}"]}]}]}}}}' --type merge
-        oc -n openshift-machine-api patch machine {{ infraid }}-master-{{ item }} -p '{"spec":{"providerSpec":{"value":{"subnet":[{"filters":[{"name": "subnet-id", "values":["{{ privatesubnets.split(',')[item | int] }}"]}]}]}}}}' --type merge
+        oc -n openshift-machine-api patch machine {{ infraid }}-master-{{ item }} -p '{"spec":{"providerSpec":{"value":{"subnet":{"filters":[{"name": "subnet-id", "values":["{{ privatesubnets.split(',')[item | int] }}"]}]}}}}}' --type merge
         oc -n openshift-machine-api patch machine {{ infraid }}-master-{{ item }} -p '{"spec":{"providerSpec":{"value":{"iamInstanceProfile":{"id": "{{ cluster_security_stack.stack_outputs.MasterInstanceProfile }}"}}}}}' --type merge
         oc -n openshift-machine-api patch machine {{ infraid }}-master-{{ item }} -p '{"spec":{"providerSpec":{"value":{"ami":{"id": "{{ rhcos_ami }}"}}}}}' --type merge
-
+#        oc -n openshift-machine-api patch machine {{ infraid }}-master-{{ item }} -p '{"spec":{"providerSpec":{"value":{"loadBalancers":[{"name": "{{ cluster_infra_stack.stack_outputs.InternalApiLoadBalancerName.split('/')[1] }}", "type": "network"},{"name": "{{ cluster_infra_stack.stack_outputs.ExternalApiLoadBalancerName.split('/')[1] }}", "type": "network"}]}}}}' --type merge
+#
+#       oc -n openshift-machine-api patch machine {{ infraid }}-master-{{ item }} -p '{"spec":{"providerSpec":{"value":{"subnet":[{"filters":[{"name": "subnet-id", "values":["{{ privatesubnets.split(',')[item | int] }}"]}]}]}}}}' --type merge
       with_sequence: start=0 count=3
 
 
