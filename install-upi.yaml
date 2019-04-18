@@ -213,11 +213,12 @@
 
         oc -n openshift-machine-api patch machine {{ infraid }}-master-{{ item }} -p '{"spec":{"providerSpec":{"value":{"loadBalancers":[{"name": "{{ cluster_infra_stack.stack_outputs.InternalApiLoadBalancerName.split('/')[1] }}", "type": "network"}{% if api_internal_only != true %},{"name": "{{ cluster_infra_stack.stack_outputs.ExternalApiLoadBalancerName.split('/')[1] }}", "type": "network"}{% endif %}]}}}}' --type merge
         oc -n openshift-machine-api patch machine {{ infraid }}-master-{{ item }} -p '{"spec":{"providerSpec":{"value":{"securityGroups":[{"filters":[{"name": "group-id", "values":["{{ cluster_security_stack.stack_outputs.MasterSecurityGroupId }}"]}]}]}}}}' --type merge
-        oc -n openshift-machine-api patch machine {{ infraid }}-master-{{ item }} -p '{"spec":{"providerSpec":{"value":{"subnet":[{"filters":[{"name": "subnet-id", "values":["{{ privatesubnets.split(',')[item | int] }}"]}]}]}}}}' --type merge
+        oc -n openshift-machine-api patch machine {{ infraid }}-master-{{ item }} -p '{"spec":{"providerSpec":{"value":{"subnet":{"filters":[{"name": "subnet-id", "values":["{{ privatesubnets.split(',')[item | int] }}"]}]}}}}}' --type merge
         oc -n openshift-machine-api patch machine {{ infraid }}-master-{{ item }} -p '{"spec":{"providerSpec":{"value":{"iamInstanceProfile":{"id": "{{ cluster_security_stack.stack_outputs.MasterInstanceProfile }}"}}}}}' --type merge
         oc -n openshift-machine-api patch machine {{ infraid }}-master-{{ item }} -p '{"spec":{"providerSpec":{"value":{"ami":{"id": "{{ rhcos_ami }}"}}}}}' --type merge
 #        oc -n openshift-machine-api patch machine {{ infraid }}-master-{{ item }} -p '{"spec":{"providerSpec":{"value":{"loadBalancers":[{"name": "{{ cluster_infra_stack.stack_outputs.InternalApiLoadBalancerName.split('/')[1] }}", "type": "network"},{"name": "{{ cluster_infra_stack.stack_outputs.ExternalApiLoadBalancerName.split('/')[1] }}", "type": "network"}]}}}}' --type merge
 #
+#       oc -n openshift-machine-api patch machine {{ infraid }}-master-{{ item }} -p '{"spec":{"providerSpec":{"value":{"subnet":[{"filters":[{"name": "subnet-id", "values":["{{ privatesubnets.split(',')[item | int] }}"]}]}]}}}}' --type merge
       with_sequence: start=0 count=3
 
 
