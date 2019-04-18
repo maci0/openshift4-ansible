@@ -36,11 +36,10 @@ ssh_key: "ssh-rsa AAAAB3... user@example.com"
 #get from try.openshift.com
 pull_secret: '{"auths":{"cloud.openshift.com":{"auth":"b3BjRsRVVSdnA..... example.com"}}}'
 
-# Set to "True" to mark EC2 instances for automatic shutdown. The
-# shutdown has to be done by an external script that loops over all
-# EC2 instances and looks for the "auto_shut_bool" tag.
-# This is optional either set or comment out.
-automatic_shutdown: "False"
+# Additional tags that will be assigned to the EC2 instances created
+# by the installation playbook and by the OpenShift worker machine
+# set.
+extra_instance_tags: {}
 
 # AWS bootstrap resources are deleted after a successful installation
 # if this is set to true.

@@ -53,7 +53,6 @@
 #
 #    - debug:
 #        msg: "{{ metadata_json.infraID }}"
-    
 
     - include_tasks: tasks/bootstrap-s3-bucket.yaml
 
@@ -128,6 +127,12 @@
           clustername: "{{ clustername }}"
           infraid: "{{ infraid }}"
 
+    - name: Set default master tags
+      set_fact:
+        default_master_tags:
+          clustername: "{{ clustername }}"
+          infraid: "{{ infraid }}"
+
     - name: Create UPI Node Launch (EC2 master instances)
       cloudformation:
         stack_name: "{{ infraid }}-cluster-master-nodes"
@@ -154,10 +159,7 @@
 #this is confusing but right for in some cases. in others use the privatezonename var
           PrivateHostedZoneName: "{{ clustername }}.{{ publiczonename }}"
           CertificateAuthorities: "{{ master_ignition.ignition.security.tls.certificateAuthorities[0].source }}"
-        tags:
-          clustername: "{{ clustername }}"
-          infraid: "{{ infraid }}"
-          auto_shut_bool: "{{ automatic_shutdown | default(omit) }}"
+        tags: "{{ default_master_tags | combine(extra_instance_tags) }}"
 
 #TODO: change master ec2 instance termination protection to true and then remove old machine api objects after
 

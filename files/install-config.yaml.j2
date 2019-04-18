@@ -34,9 +34,8 @@ networking:
 platform:
   aws:
     region: "{{ region }}"
-{% if automatic_shutdown is defined %}
-    userTags:
-      auto_shut_bool: "{{ automatic_shutdown }}"
+{% if extra_instance_tags %}
+    userTags: {{ extra_instance_tags }}
 {% endif %}
 pullSecret: '{{ pull_secret }}'
 {% if ssh_key is defined %}
