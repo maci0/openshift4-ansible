@@ -77,6 +77,27 @@ Modify `vars.yaml`
 source /usr/local/aws/activate
 
 ansible-playbook install-upi.yaml
-
 ```
 
+To delete all AWS resources that were created for an OpenShift cluster, use the same `vars.yaml` that was used for the
+installation. In particular, the clustername has to match. You also need the `/tmp/CLUSTERNAME` directory that was created
+by the installation playbook.
+
+```bash
+ansible-playbook uninstall-upi.yaml
+```
+
+### Disk Encryption
+
+To enable encryption of the EBS volumes attached to the master and worker nodes, the RHCOS AMI needs to be copied before 
+the installation is started. This can be done by running
+
+```bash
+ansible-playbook create-encrypted-ami.yaml
+```
+
+The playbook uses the AMI ID `rhcos_ami` from `vars.yaml` as the source and creates a private AMI that is identical 
+to the source AMI, except that disk encryption is enabled.
+
+install-upi.yaml looks for a private AMI created by `create-encrypted-ami.yaml`. If none is found, it uses AMI ID 
+`rhcos_ami` from `vars.yaml`.

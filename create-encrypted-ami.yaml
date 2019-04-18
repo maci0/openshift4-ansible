@@ -1,0 +1,49 @@
+---
+- name: Create encrypted AMI image
+  gather_facts: false
+  hosts: localhost
+  vars_files:
+    - "{{ playbook_dir }}/vars.yaml"
+  tasks:
+    - name: Get unencrypted RCOS AMI
+      ec2_ami_facts:
+        filters:
+          image-id: "{{ rhcos_ami }}"
+        region: "{{ region }}"
+      register: ami_unencrypted
+
+    - name: Get previous encrypted RHCOS AMI
+      ec2_ami_facts:
+        filters:
+          "tag:rhcos_version": "{{ rhcos_version }}"
+        region: "{{ region }}"
+      register: ami_encrypted_old
+
+    - name: Delete previous encrypted AMIs
+      ec2_ami:
+        image_id: "{{ item.image_id }}"
+        region: "{{ region }}"
+        delete_snapshot: true
+        state: absent
+      loop: "{{ ami_encrypted_old.images }}"
+
+    - name: Copy unencrypted RHCOS AMI and enable encryption
+      ec2_ami_copy:
+        source_image_id: "{{ rhcos_ami }}"
+        source_region: "{{ region }}"
+        name: "{{ ami_unencrypted.images[0]['name'] ~ '-encrypted' }}"
+        region: "{{ region }}"
+        encrypted: true
+        tags:
+          rhcos_version: "{{ rhcos_version }}"
+      register: ami_encrypted
+
+    - name: Wait for encrypted RHCOS AMI to become available
+      ec2_ami_facts:
+        image_ids: "{{ ami_encrypted.image_id }}"
+        region: "{{ region }}"
+      register: ami_check
+      until: ami_check.images[0].state == 'available'
+      retries: 60
+      delay: 10
+...

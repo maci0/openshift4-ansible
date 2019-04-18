@@ -18,7 +18,14 @@ vpccidr: "10.30.0.0/18"
 clustercidr: "10.128.0.0/14"
 servicecidr: "172.30.0.0/16"
 
-rhcos_ami: "ami-0f7bc7f8db2db2817"
+# Public AMI rhcos-410.8.20190417.1-hvm
+rhcos_ami: "ami-0f6c404c76c2f94dd"
+
+# This is used by create-encrypted-ami.yaml to tag the private AMI
+# which we copy from the public AMI to enable disk
+# encryption. install-upi.yaml uses this tag to find the AMI to use
+# for master and worker nodes.
+rhcos_version: "410.8"
 
 worker_instance: "m5.2xlarge"
 master_instance: "m4.2xlarge"

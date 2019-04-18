@@ -8,6 +8,18 @@
     KUBECONFIG: /tmp/{{ clustername }}/auth/kubeconfig
 
   tasks:
+    - name: Get encrypted AMI
+      ec2_ami_facts:
+        filters:
+          "tag:rhcos_version": "{{ rhcos_version }}"
+        region: "{{ region }}"
+      register: ami_encrypted
+
+    - name: Override AMI ID
+      set_fact:
+        rhcos_ami: "{{ ami_encrypted.images[0].image_id }}"
+      when: ami_encrypted.images
+
     - include_tasks: tasks/installer-config-directory.yaml
 
     - name: "Check if /tmp/{{ clustername }}/metadata.json exists"
