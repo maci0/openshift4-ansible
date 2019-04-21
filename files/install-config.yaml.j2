@@ -35,7 +35,7 @@ platform:
   aws:
     region: "{{ region }}"
 {% if extra_instance_tags %}
-    userTags: {{ extra_instance_tags }}
+    userTags: {{ extra_instance_tags | to_yaml }}
 {% endif %}
 pullSecret: '{{ pull_secret }}'
 {% if ssh_key is defined %}
