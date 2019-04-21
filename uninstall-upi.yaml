@@ -121,7 +121,7 @@
         type: A
       register: route53_private
 
-    - name: Delete public Route53 records
+    - name: Terminate public Route53 records
       route53:
         zone: "{{ publiczonename }}"
         record: "*.apps.{{ clustername }}.{{ publiczonename }}"
@@ -133,7 +133,7 @@
         state: absent
       when: "'value' in route53_public.set"
 
-    - name: Delete private Route53 records
+    - name: Terminate private Route53 records
       route53:
         zone: "{{ privatezonename }}"
         private_zone: yes
