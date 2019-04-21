@@ -8,6 +8,11 @@
     state: absent
   tasks:
     - include_tasks: tasks/get_infraid.yaml
+
+    - name: Get short infra ID
+      set_fact:
+        short_infraid: "{{ infraid | regex_replace('.*-([^-]+)$', '\\1') }}"
+
     - include_tasks: tasks/bootstrap-s3-bucket.yaml
 
     - name: Terminate EC2 CloudFormation stacks
@@ -86,6 +91,16 @@
         - "'kubernetes.io/cluster/' ~ infraid in item['tags']"
         - item['tags']['kubernetes.io/cluster/' ~ infraid] == 'owned'
       with_items: "{{ ec2_groups.security_groups }}"
+
+    - name: Terminate IAM users
+      iam_user:
+        name: "{{ clustername }}-{{ item }}-{{ short_infraid }}"
+        state: absent
+      loop:
+        - cloud-credential-operator-iam-ro
+        - openshift-image-registry
+        - openshift-ingress
+        - openshift-machine-api
 
     - name: Get public Route53 record
       route53:
