@@ -36,10 +36,16 @@ ssh_key: "ssh-rsa AAAAB3... user@example.com"
 #get from try.openshift.com
 pull_secret: '{"auths":{"cloud.openshift.com":{"auth":"b3BjRsRVVSdnA..... example.com"}}}'
 
-# Additional tags that will be assigned to the EC2 instances created
-# by the installation playbook and by the OpenShift worker machine
-# set.
-extra_instance_tags: {}
+# Additional tags to assign to the EC2 instances created by the
+# installation playbook and by the OpenShift worker machine set.
+#
+# The "auto_shut_bool" tag is only an example, it will not do anything
+# without a script that looks for this tag. AWS tags are strings, we
+# have to quote the "True" value that otherwise would be sent to the
+# AWS API as a boolean.
+extra_instance_tags:
+  auto_shut_bool: 'True'
+  department: Engineering
 
 # AWS bootstrap resources are deleted after a successful installation
 # if this is set to true.
@@ -48,4 +54,3 @@ boostrap_cleanup: true
 # Enable this to only expose the API internally, requires ansible host to
 # be on the same network as cluster
 api_internal_only: true
- 
