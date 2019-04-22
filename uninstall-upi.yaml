@@ -92,15 +92,46 @@
         - item['tags']['kubernetes.io/cluster/' ~ infraid] == 'owned'
       with_items: "{{ ec2_groups.security_groups }}"
 
+    # The ID at the end of the IAM usernames is random, it does not
+    # match the cluster's infraid. There's no Ansible module that
+    # filters IAM users by tag. For now, we use the AWS CLI to list
+    # all IAM users and carefully check the username before deleting
+    # them.
+
+    - name: Get IAM users
+      command: aws iam list-users
+      register: all_iam_users
+
+    - set_fact:
+        iam_users: "{{ (all_iam_users.stdout | from_json)['Users'] | selectattr('UserName', 'match', clustername ~ '-(cloud-credential-operator-iam-ro|openshift-image-registry|openshift-ingress|openshift-machine-api)-[a-z0-9]+') | map(attribute='UserName') | list }}"
+
+    - name: Terminate IAM user policies
+      iam_policy:
+        iam_type: user
+        iam_name: "{{ item }}"
+        policy_name: "{{ item }}-policy"
+        state: absent
+      loop: "{{ iam_users }}"
+
+    - name: Get IAM user access keys
+      command: aws iam list-access-keys --user-name {{ item }}
+      register: access_keys
+      loop: "{{ iam_users }}"
+
+    - name: Terminate IAM user access keys
+      iam:
+        iam_type: user
+        name: "{{ item['item'] }}"
+        state: update
+        access_key_ids: "{{ (item['stdout'] | from_json)['AccessKeyMetadata'] | map(attribute='AccessKeyId') | list }}"
+        access_key_state: remove
+      loop: "{{ access_keys['results'] }}"
+
     - name: Terminate IAM users
       iam_user:
-        name: "{{ clustername }}-{{ item }}-{{ short_infraid }}"
+        name: "{{ item }}"
         state: absent
-      loop:
-        - cloud-credential-operator-iam-ro
-        - openshift-image-registry
-        - openshift-ingress
-        - openshift-machine-api
+      loop: "{{ iam_users }}"
 
     - name: Get public Route53 record
       route53:
