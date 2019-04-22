@@ -1,8 +1,13 @@
 # openshift4-ansible
 
-Creates UPI on AWS into an existing VPC. The Cloudformation templates are based on these: https://github.com/openshift/installer/tree/master/upi/aws/cloudformation
+This playbook creates the OpenShift 4 UPI (User provided Infrastructure) on AWS into an existing VPC with existing private and public subnets and DNS Zones.
+
+It is also possible to deploy the API server without exposing it to the internet, this will require that the host that runs this ansible playbook does live in the same VPC.
+
+The Cloudformation templates are based on these: https://github.com/openshift/installer/tree/master/upi/aws/cloudformation
 
 Some information has to be provided. Mainly information about your aws VPC, your subnets etc. See `vars.yaml`
+
 
 ## Setup
 
