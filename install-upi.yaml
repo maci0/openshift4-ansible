@@ -70,7 +70,7 @@
         stack_name: "{{ infraid }}-cluster-infra"
         state: present
         region: "{{ region }}"
-        template: "files/cloudformation/02_cluster_infra.yaml{% if api_internal_only is sameas true %}.internalonly{% else %}.existingvpc{% endif %}"
+        template: "files/cloudformation/02_cluster_infra.yaml{% if api_internal_only is sameas true %}.internalonly{% else %}.existingprivzone{% endif %}"
         template_parameters:
           ClusterName: "{{ clustername }}"
           InfrastructureName: "{{ infraid }}"
