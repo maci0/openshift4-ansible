@@ -3,10 +3,10 @@ region: "us-west-2"
 clustername: "foobar"
 
 publiczoneid: "ZOC70SORUQC4ZO"
-publiczonename: "ocp4.aws.example.com"
+publiczonename: "ocp4.example.com"
 
 privatezoneid: "ZB5JSFHSIEHVAG"
-privatezonename: "aws.example.com"
+privatezonename: "foobar.ocp4.example.com"
 
 # subnet order matters, needs to be az1,az2,az3,etc
 privatesubnets: "subnet-a62e89d2f27096776,subnet-965bf47c8c64ace62,subnet-69fca4cfc562cdcca"
