@@ -219,8 +219,10 @@
       when: finish.stat.exists == False
 
     - name: delete broken machines
-      command: oc -n openshift-machine-api delete machine -l machine.openshift.io/cluster-api-machine-role=worker
+      command: oc -n openshift-machine-api delete machine "{{ infraid }}-worker-{{ region }}{{ item.value }}"
+      with_dict: {a: 0, b: 1, c: 2}
       when: finish.stat.exists == False
+
 
 #    - name: delete broken machines
 #      command: oc -n openshift-machine-api delete machine -l machine.openshift.io/cluster-api-machine-role=master
@@ -239,7 +241,7 @@
 #        oc -n openshift-machine-api patch machine {{ infraid }}-master-{{ item }} -p '{"spec":{"providerSpec":{"value":{"loadBalancers":[{"name": "{{ cluster_infra_stack.stack_outputs.InternalApiLoadBalancerName.split('/')[1] }}", "type": "network"},{"name": "{{ cluster_infra_stack.stack_outputs.ExternalApiLoadBalancerName.split('/')[1] }}", "type": "network"}]}}}}' --type merge
 #
 #       oc -n openshift-machine-api patch machine {{ infraid }}-master-{{ item }} -p '{"spec":{"providerSpec":{"value":{"subnet":[{"filters":[{"name": "subnet-id", "values":["{{ privatesubnets.split(',')[item | int] }}"]}]}]}}}}' --type merge
-      with_sequence: start=0 count=3
+#      with_sequence: start=0 count=3
 
 
     - name: render DNS settings
@@ -252,10 +254,10 @@
       command: oc replace -f /tmp/{{ clustername }}/dnses.yaml
       when: finish.stat.exists == False
         
-    - name: workaround for missing kubeadmin-password file
-      copy:
-        dest: "/tmp/{{ clustername }}/auth/kubeadmin-password"
-        content: "REDACTED, use kubeconfig instead"
+#    - name: workaround for missing kubeadmin-password file
+#      copy:
+#        dest: "/tmp/{{ clustername }}/auth/kubeadmin-password"
+#        content: "REDACTED, use kubeconfig instead"
 
     - name: Wait for ingress controller
       command: oc get -n openshift-ingress-operator ingresscontroller/default
