@@ -48,7 +48,7 @@ rm -f openshift-client-linux-${OPENSHIFT_RELEASE}.tar.gz
 oc completion bash >/etc/bash_completion.d/openshift
 openshift-install completion >> /etc/bash_completion.d/openshift
 
-source /usr/local/aws/activate
+source /usr/local/aws/bin/activate
 pip install ansible boto3 botocore boto
 cp /usr/lib64/python2.7/site-packages/selinux /usr/local/aws/lib/python2.7/site-packages/ -r
 
@@ -80,7 +80,7 @@ aws sts get-caller-identity
 Modify `vars.yaml`
 
 ```bash
-source /usr/local/aws/activate
+source /usr/local/aws/bin/activate
 
 ansible-playbook install-upi.yaml
 ```
