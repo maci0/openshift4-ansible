@@ -34,15 +34,16 @@ unzip awscli-bundle.zip
 aws --version
 rm -rf /root/awscli-bundle /root/awscli-bundle.zip
 
-INSTALLER_VERSION=v0.16.1
-curl -L https://github.com/openshift/installer/releases/download/${INSTALLER_VERSION}/openshift-install-linux-amd64 -o /usr/bin/openshift-install
-chmod +x /usr/bin/openshift-install
+OPENSHIFT_RELEASE=4.1.0-rc.0
+curl -L -O https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/openshift-install-linux-${OPENSHIFT_RELEASE}.tar.gz
+tar xzf openshift-install-linux-${OPENSHIFT_RELEASE}.tar.gz --overwrite -C /usr/bin
 
-OC_CLI_VERSION=4.0.22
-curl -L -O https://mirror.openshift.com/pub/openshift-v3/clients/${OC_CLI_VERSION}/linux/oc.tar.gz
-tar zxvf oc.tar.gz -C /usr/bin
-rm -f oc.tar.gz
-chmod +x /usr/bin/oc
+rm -f openshift-install-linux-${OPENSHIFT_RELEASE}.tar.gz
+
+curl -L -O https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/openshift-client-linux-${OPENSHIFT_RELEASE}.tar.gz
+tar xzf openshift-client-linux-${OPENSHIFT_RELEASE}.tar.gz --overwrite -C /usr/bin
+
+rm -f openshift-client-linux-${OPENSHIFT_RELEASE}.tar.gz
 
 oc completion bash >/etc/bash_completion.d/openshift
 openshift-install completion >> /etc/bash_completion.d/openshift
