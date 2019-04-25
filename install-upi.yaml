@@ -219,7 +219,7 @@
       when: finish.stat.exists == False
 
     - name: delete broken machines
-      command: oc -n openshift-machine-api delete machine "{{ infraid }}-worker-{{ region }}{{ item.key }}"
+      command: oc -n openshift-machine-api delete machine -l "machine.openshift.io/cluster-api-machineset={{ infraid }}-worker-{{ region }}{{ item.key }}"
       with_dict: {a: 0, b: 1, c: 2}
       when: finish.stat.exists == False
 
