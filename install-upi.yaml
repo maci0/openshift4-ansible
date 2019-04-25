@@ -178,7 +178,7 @@
 
     - name: Wait until bootstrap is complete
       shell: >
-        openshift-install user-provided-infrastructure bootstrap-complete --dir=/tmp/{{ clustername }} &&
+        openshift-install wait-for bootstrap-complete --dir=/tmp/{{ clustername }} &&
         touch /tmp/{{ clustername }}/bootstrap-complete
       when: bootstrap_result.stat.exists == False
 
@@ -270,7 +270,7 @@
 
     - name: Wait until install is complete
       shell: >
-        openshift-install user-provided-infrastructure finish --dir=/tmp/{{ clustername }} &&
+        openshift-install wait-for install-complete --dir=/tmp/{{ clustername }} &&
         touch /tmp/{{ clustername }}/finish
       when: finish.stat.exists == False
 
