@@ -36,12 +36,12 @@ rm -rf /root/awscli-bundle /root/awscli-bundle.zip
 
 OPENSHIFT_RELEASE=4.1.0-rc.0
 curl -L -O https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/openshift-install-linux-${OPENSHIFT_RELEASE}.tar.gz
-tar xzf openshift-install-linux-${OPENSHIFT_RELEASE}.tar.gz --overwrite -C /usr/bin
+tar xzf openshift-install-linux-${OPENSHIFT_RELEASE}.tar.gz --overwrite -C /usr/local/aws/bin
 
 rm -f openshift-install-linux-${OPENSHIFT_RELEASE}.tar.gz
 
 curl -L -O https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/openshift-client-linux-${OPENSHIFT_RELEASE}.tar.gz
-tar xzf openshift-client-linux-${OPENSHIFT_RELEASE}.tar.gz --overwrite -C /usr/bin
+tar xzf openshift-client-linux-${OPENSHIFT_RELEASE}.tar.gz --overwrite -C /usr/local/aws/bin
 
 rm -f openshift-client-linux-${OPENSHIFT_RELEASE}.tar.gz
 
