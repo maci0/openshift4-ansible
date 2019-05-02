@@ -7,3 +7,4 @@
 
 - set_fact:
     infraid: "{{ metadata_json.infraID }}"
+    clusterid: "{{ metadata_json.clusterID }}"

@@ -12,8 +12,7 @@
     - name: Get short infra ID
       set_fact:
         short_infraid: "{{ infraid | regex_replace('.*-([^-]+)$', '\\1') }}"
-
-    - include_tasks: tasks/bootstrap-s3-bucket.yaml
+        short_clusterid: "{{ clusterid | regex_replace('-', '') }}"
 
     - name: Terminate EC2 CloudFormation stacks
       cloudformation:
@@ -56,6 +55,23 @@
       with_items:
         - "{{ infraid }}-cluster-security"
         - "{{ infraid }}-cluster-infra"
+
+    # Terminate S3 buckets created by OpenShift.
+
+    - include_tasks: tasks/bootstrap-s3-bucket.yaml
+
+    - name: List S3 buckets
+      aws_s3_bucket_facts:
+        region: "{{ region }}"
+      register: s3
+
+    - name: Terminate S3 buckets
+      s3_bucket:
+        name: "{{ item }}"
+        state: absent
+        force: yes
+      when: item is match('image-registry-' ~ region ~ '-' ~ short_clusterid ~ '-[a-z0-9]+')
+      loop: "{{ s3.ansible_facts.buckets | map(attribute='name') | list }}"
 
     # Terminate load balancers and security groups created by
     # OpenShift.
