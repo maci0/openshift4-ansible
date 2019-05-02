@@ -12,6 +12,7 @@
       ec2_ami_facts:
         filters:
           "tag:rhcos_version": "{{ rhcos_version }}"
+          "tag:latest_ami": 'true'
         region: "{{ region }}"
       register: ami_encrypted
 

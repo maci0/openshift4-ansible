@@ -16,15 +16,16 @@
       ec2_ami_facts:
         filters:
           "tag:rhcos_version": "{{ rhcos_version }}"
+          "tag:latest_ami": 'true'
         region: "{{ region }}"
       register: ami_encrypted_old
 
-    - name: Delete previous encrypted AMIs
+    - name: Update latest_ami tag for previous encrypted AMIs
       ec2_ami:
         image_id: "{{ item.image_id }}"
         region: "{{ region }}"
-        delete_snapshot: true
-        state: absent
+        tags:
+          latest_ami: 'false'
       loop: "{{ ami_encrypted_old.images }}"
 
     - name: Copy unencrypted RHCOS AMI and enable encryption
@@ -36,6 +37,7 @@
         encrypted: true
         tags:
           rhcos_version: "{{ rhcos_version }}"
+          latest_ami: 'true'
       register: ami_encrypted
 
     - name: Wait for encrypted RHCOS AMI to become available
