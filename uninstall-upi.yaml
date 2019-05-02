@@ -98,11 +98,19 @@
         filters: "tag:kubernetes.io/cluster/{{ infraid }}=owned"
       register: ec2_groups
 
+    # Even though we use the "wait" option when we terminate the ELBs,
+    # deleting the security groups sometimes fails because of
+    # dependent objects. We retry as a workaround.
+
     - name: Terminate security groups
       ec2_group:
         group_id: "{{ item['group_id'] }}"
         region: "{{ region }}"
         state: absent
+      register: task_result
+      retries: 3
+      delay: 10
+      until: task_result is success
       when:
         - "'kubernetes.io/cluster/' ~ infraid in item['tags']"
         - item['tags']['kubernetes.io/cluster/' ~ infraid] == 'owned'
