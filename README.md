@@ -34,7 +34,7 @@ unzip awscli-bundle.zip
 aws --version
 rm -rf /root/awscli-bundle /root/awscli-bundle.zip
 
-OPENSHIFT_RELEASE=4.1.0-rc.0
+OPENSHIFT_RELEASE=4.1.0-rc.3
 curl -L -O https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/openshift-install-linux-${OPENSHIFT_RELEASE}.tar.gz
 tar xzf openshift-install-linux-${OPENSHIFT_RELEASE}.tar.gz --overwrite -C /usr/bin
 
