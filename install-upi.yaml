@@ -1,9 +1,7 @@
 ---
-- name: dark magic
+- name: Install OpenShift 4
   gather_facts: false
   hosts: localhost
-  vars_files:
-    - "{{ playbook_dir }}/vars.yaml"
   environment:
     KUBECONFIG: /tmp/{{ clustername }}/auth/kubeconfig
 

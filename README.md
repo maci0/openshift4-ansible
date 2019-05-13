@@ -77,7 +77,7 @@ aws sts get-caller-identity
 
 ## Usage
 
-Modify `vars.yaml`
+Modify `inventory/group_vars/all`
 
 ```bash
 source /usr/local/aws/bin/activate
@@ -85,7 +85,7 @@ source /usr/local/aws/bin/activate
 ansible-playbook install-upi.yaml
 ```
 
-To delete all AWS resources that were created for an OpenShift cluster, use the same `vars.yaml` that was used for the
+To delete all AWS resources that were created for an OpenShift cluster, use the same `inventory/group_vars/all` that was used for the
 installation. In particular, the clustername has to match. You also need the `/tmp/CLUSTERNAME` directory that was created
 by the installation playbook.
 

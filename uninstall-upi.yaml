@@ -2,8 +2,6 @@
 - name: Uninstall OpenShift 4
   gather_facts: false
   hosts: localhost
-  vars_files:
-    - vars.yaml
   vars:
     state: absent
   tasks:
