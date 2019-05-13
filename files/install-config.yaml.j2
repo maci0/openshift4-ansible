@@ -6,9 +6,9 @@ compute:
     aws:
       type: {{ worker_instance }}
       zones:
-      - "{{ region }}a"
-      - "{{ region }}b"
-      - "{{ region }}c"
+      - {{ region }}a
+      - {{ region }}b
+      - {{ region }}c
   replicas: 3
 controlPlane:
   name: master
@@ -16,13 +16,13 @@ controlPlane:
     aws:
       type: {{ master_instance }}
       zones:
-      - "{{ region }}a"
-      - "{{ region }}b"
-      - "{{ region }}c"
+      - {{ region }}a
+      - {{ region }}b
+      - {{ region }}c
   replicas: 3
 metadata:
   creationTimestamp: null
-  name: "{{ clustername }}"
+  name: {{ clustername }}
 networking:
   clusterNetwork:
   - cidr: {{ clustercidr }}
@@ -33,11 +33,11 @@ networking:
   - {{ servicecidr }}
 platform:
   aws:
-    region: "{{ region }}"
+    region: {{ region }}
 {% if extra_instance_tags %}
     userTags: {{ extra_instance_tags | to_yaml }}
 {% endif %}
-pullSecret: '{{ pull_secret }}'
+pullSecret: {{ pull_secret }}
 {% if ssh_key is defined %}
-sshKey: "{{ ssh_key }}"
+sshKey: {{ ssh_key }}
 {% endif %}
