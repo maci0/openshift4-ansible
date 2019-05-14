@@ -155,10 +155,6 @@
         state: absent
       loop: "{{ iam_users }}"
 
-    - set_fact:
-        privatezonename: "{{ clustername }}.{{ publiczonename }}"
-      when: privatezonename is not defined
-
     - name: Get public Route53 record
       route53:
         state: get
@@ -166,17 +162,6 @@
         record: "*.apps.{{ clustername }}.{{ publiczonename }}"
         type: A
       register: route53_public
-
-    # The record name has to include the publiczonename even for the
-    # private zone.    
-    - name: Get private Route53 record
-      route53:
-        state: get
-        zone: "{{ privatezonename }}"
-        private_zone: yes
-        record: "*.apps.{{ clustername }}.{{ publiczonename }}"
-        type: A
-      register: route53_private
 
     - name: Terminate public Route53 records
       route53:
@@ -190,27 +175,34 @@
         state: absent
       when: "'value' in route53_public.set"
 
-    - name: Terminate private Route53 records
-      route53:
-        zone: "{{ privatezonename }}"
-        private_zone: yes
-        record: "*.apps.{{ clustername }}.{{ publiczonename }}"
-        type: A
-        value: "{{ route53_private.set.value }}"
-        ttl: "{{ route53_private.set.ttl }}"
-        alias: true
-        alias_hosted_zone_id: "{{ route53_private.set.alias_hosted_zone_id }}"
-        state: absent
-      when: "'value' in route53_private.set"
+    # If the variable privatezonename is defined, the private Route53
+    # was not created by us. It will still exist after we delete the
+    # OpenShift cluster, so we have to remove our DNS records from it.
+    - block:
+        # The record name has to include the publiczonename even for the
+        # private zone.
+        - name: Get private Route53 record
+          route53:
+            state: get
+            zone: "{{ privatezonename }}"
+            private_zone: yes
+            record: "*.apps.{{ clustername }}.{{ publiczonename }}"
+            type: A
+          register: route53_private
 
-    # If the privatezoneid variable is not defined, we assume that the
-    # private Route53 zone was created as part of the cluster
-    # installation and we delete it.
-    - name: Terminate private Route53 zone
-      route53_zone:
-        zone: "{{ privatezonename }}"
-        state: absent
-      when: privatezoneid is not defined
+        - name: Terminate private Route53 records
+          route53:
+            zone: "{{ privatezonename }}"
+            private_zone: yes
+            record: "*.apps.{{ clustername }}.{{ publiczonename }}"
+            type: A
+            value: "{{ route53_private.set.value }}"
+            ttl: "{{ route53_private.set.ttl }}"
+            alias: true
+            alias_hosted_zone_id: "{{ route53_private.set.alias_hosted_zone_id }}"
+            state: absent
+          when: "'value' in route53_private.set"
+      when: privatezonename is defined
 
     - name: Untag subnets
       command: aws ec2 delete-tags --resources "{{ item }}" --tags Key=kubernetes.io/cluster/{{ infraid }}
