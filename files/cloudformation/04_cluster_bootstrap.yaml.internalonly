@@ -172,6 +172,9 @@ Resources:
         - {
           S3Loc: !Ref BootstrapIgnitionLocation
         }
+      Tags:
+      - Key: "Name"
+        Value: !Join ["-", [!Ref InfrastructureName, "bootstrap"]]
 
 #  RegisterBootstrapApiTarget:
 #    Condition: DoRegistration
