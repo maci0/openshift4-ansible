@@ -103,6 +103,7 @@ Resources:
   BootstrapIamRole:
     Type: AWS::IAM::Role
     Properties:
+      RoleName: !Join ["-", [!Ref InfrastructureName, "bootstrap", "role"]]
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -141,6 +142,7 @@ Resources:
   BootstrapSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
+      GroupName: !Join ["-", ["bootstrap-sg", !Ref InfrastructureName]]
       GroupDescription: Cluster Bootstrap Security Group
       SecurityGroupIngress:
       - IpProtocol: tcp
@@ -172,6 +174,11 @@ Resources:
         - {
           S3Loc: !Ref BootstrapIgnitionLocation
         }
+      Tags:
+      - Key: "Name"
+        Value: !Join ["-", [!Ref InfrastructureName, "bootstrap"]]
+      - Key: !Join ["", ["kubernetes.io/cluster/", !Ref InfrastructureName]]
+        Value: "owned"
 
   RegisterBootstrapApiTarget:
     Condition: DoRegistration

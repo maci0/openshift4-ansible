@@ -49,6 +49,7 @@ Resources:
   MasterSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
+      GroupName: !Join ["-", ["master-sg", !Ref InfrastructureName]]
       GroupDescription: Cluster Master Security Group
       SecurityGroupIngress:
       - IpProtocol: icmp
@@ -72,6 +73,7 @@ Resources:
   WorkerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
+      GroupName: !Join ["-", ["worker-sg", !Ref InfrastructureName]]
       GroupDescription: Cluster Worker Security Group
       SecurityGroupIngress:
       - IpProtocol: icmp
@@ -257,6 +259,7 @@ Resources:
   MasterIamRole:
     Type: AWS::IAM::Role
     Properties:
+      RoleName: !Join ["-", [!Ref InfrastructureName, "master", "role"]]
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -293,6 +296,7 @@ Resources:
   WorkerIamRole:
     Type: AWS::IAM::Role
     Properties:
+      RoleName: !Join ["-", [!Ref InfrastructureName, "worker", "role"]]
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:

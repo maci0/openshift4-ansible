@@ -175,6 +175,8 @@ Resources:
           CA_BUNDLE: !Ref CertificateAuthorities,
         }
       Tags:
+      - Key: "Name"
+        Value: !Join ["-", [!Ref InfrastructureName, "master", "0"]]
       - Key: !Join ["", ["kubernetes.io/cluster/", !Ref InfrastructureName]]
         Value: "shared"
 
@@ -222,6 +224,8 @@ Resources:
           CA_BUNDLE: !Ref CertificateAuthorities,
         }
       Tags:
+      - Key: "Name"
+        Value: !Join ["-", [!Ref InfrastructureName, "master", "1"]]
       - Key: !Join ["", ["kubernetes.io/cluster/", !Ref InfrastructureName]]
         Value: "shared"
 
@@ -269,6 +273,8 @@ Resources:
           CA_BUNDLE: !Ref CertificateAuthorities,
         }
       Tags:
+      - Key: "Name"
+        Value: !Join ["-", [!Ref InfrastructureName, "master", "2"]]
       - Key: !Join ["", ["kubernetes.io/cluster/", !Ref InfrastructureName]]
         Value: "shared"
 
