@@ -104,21 +104,21 @@ Resources:
 #      - VPCId: !Ref VpcId
 #        VPCRegion: !Ref "AWS::Region"
 
-#  ExternalApiServerRecord:
-#    Type: AWS::Route53::RecordSetGroup
-#    Properties:
-#      Comment: Alias record for the API server
-#      HostedZoneId: !Ref HostedZoneId
-#      RecordSets:
-#      - Name:
-#          !Join [
-#            ".",
-#            ["api", !Ref ClusterName, !Join ["", [!Ref HostedZoneName, "."]]],
-#          ]
-#        Type: A
-#        AliasTarget:
-#          HostedZoneId: !GetAtt ExtApiElb.CanonicalHostedZoneID
-#          DNSName: !GetAtt ExtApiElb.DNSName
+  ExternalApiServerRecord:
+    Type: AWS::Route53::RecordSetGroup
+    Properties:
+      Comment: Alias record for the API server
+      HostedZoneId: !Ref HostedZoneId
+      RecordSets:
+      - Name:
+          !Join [
+            ".",
+            ["api", !Ref ClusterName, !Join ["", [!Ref HostedZoneName, "."]]],
+          ]
+        Type: A
+        AliasTarget:
+          HostedZoneId: !GetAtt IntApiElb.CanonicalHostedZoneID
+          DNSName: !GetAtt IntApiElb.DNSName
 
   InternalApiServerRecord:
     Type: AWS::Route53::RecordSetGroup
