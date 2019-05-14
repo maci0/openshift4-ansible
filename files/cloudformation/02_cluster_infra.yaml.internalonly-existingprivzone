@@ -23,6 +23,9 @@ Parameters:
     Description: The Route53 zone to register the targets with (No trailing dot - e.g. mycorp.com)
     Type: String
     Default: "example.com"
+  PrivateZoneId:
+    Description: The ID of the private zone
+    Type: String
   PublicSubnets:
     Description: The internet-facing subnets
     Type: List<AWS::EC2::Subnet::Id>
@@ -86,20 +89,20 @@ Resources:
       Subnets: !Ref PrivateSubnets
       Type: network
 
-  IntDns:
-    Type: "AWS::Route53::HostedZone"
-    Properties:
-      HostedZoneConfig:
-        Comment: "Managed by CloudFormation"
-      Name: !Join [".", [!Ref ClusterName, !Ref HostedZoneName]]
-      HostedZoneTags:
-      - Key: Name
-        Value: !Join ["-", [!Ref InfrastructureName, "int"]]
-      - Key: !Join ["", ["kubernetes.io/cluster/", !Ref InfrastructureName]]
-        Value: "owned"
-      VPCs:
-      - VPCId: !Ref VpcId
-        VPCRegion: !Ref "AWS::Region"
+#  IntDns:
+#    Type: "AWS::Route53::HostedZone"
+#    Properties:
+#      HostedZoneConfig:
+#        Comment: "Managed by CloudFormation"
+#      Name: !Join [".", [!Ref ClusterName, !Ref HostedZoneName]]
+#      HostedZoneTags:
+#      - Key: Name
+#        Value: !Join ["-", [!Ref InfrastructureName, "int"]]
+#      - Key: !Join ["", ["kubernetes.io/cluster/", !Ref InfrastructureName]]
+#        Value: "owned"
+#      VPCs:
+#      - VPCId: !Ref VpcId
+#        VPCRegion: !Ref "AWS::Region"
 
 #  ExternalApiServerRecord:
 #    Type: AWS::Route53::RecordSetGroup
@@ -121,7 +124,7 @@ Resources:
     Type: AWS::Route53::RecordSetGroup
     Properties:
       Comment: Alias record for the API server
-      HostedZoneId: !Ref IntDns
+      HostedZoneId: !Ref PrivateZoneId
       RecordSets:
       - Name:
           !Join [
@@ -354,9 +357,9 @@ Resources:
       Subnets: !Ref PrivateSubnets
 
 Outputs:
-  PrivateHostedZoneId:
-    Description: Hosted zone ID for the private DNS - needed for private records
-    Value: !Ref IntDns
+#  PrivateHostedZoneId:
+#    Description: Hosted zone ID for the private DNS - needed for private records
+#    Value: !Ref IntDns
 #  ExternalApiLoadBalancerName:
 #    Description: Full name of the External API load balancer created.
 #    Value: !GetAtt ExtApiElb.LoadBalancerFullName

@@ -69,12 +69,12 @@
         stack_name: "{{ infraid }}-cluster-infra"
         state: present
         region: "{{ region }}"
-        template: "files/cloudformation/02_cluster_infra.yaml{% if api_internal_only is sameas true %}.internalonly{% else %}.existingprivzone{% endif %}"
+        template: "files/cloudformation/02_cluster_infra.yaml{% if api_internal_only %}{% if privatezoneid is defined %}.internalonly-existingprivzone{% else %}.internalonly{% endif %}{% elif privatezoneid is defined %}.existingprivzone{% endif %}"
         template_parameters:
           ClusterName: "{{ clustername }}"
           InfrastructureName: "{{ infraid }}"
           PrivateSubnets: "{{ privatesubnets}}"
-          PrivateZoneId: "{{ privatezoneid }}"
+          PrivateZoneId: "{{ privatezoneid | default(omit) }}"
           PublicSubnets: "{{ publicsubnets }}"
           HostedZoneId: "{{ publiczoneid }}"
           HostedZoneName: "{{ publiczonename }}"
@@ -83,6 +83,10 @@
           clustername: "{{ clustername }}"
           infraid: "{{ infraid }}"
       register: cluster_infra_stack
+
+    - set_fact:
+        privatezoneid: "{{ cluster_infra_stack.stack_outputs.PrivateHostedZoneId }}"
+      when: privatezoneid is not defined
 
     - name: Create UPI Security Elements (Security Groups & IAM)
       cloudformation:
@@ -153,7 +157,7 @@
           InternalServiceTargetGroupArn: "{{ cluster_infra_stack.stack_outputs.InternalServiceTargetGroupArn }}"
           RegisterNlbIpTargetsLambdaArn: "{{ cluster_infra_stack.stack_outputs.RegisterNlbIpTargetsLambda }}"
           AutoRegisterDNS: "yes"
-          IgnitionLocation: "https://api.{{ clustername }}.{{ publiczonename }}:22623/config/master"
+          IgnitionLocation: "https://api-int.{{ clustername }}.{{ publiczonename }}:22623/config/master"
           PrivateHostedZoneId: "{{ privatezoneid }}"
 #this is confusing but right for in some cases. in others use the privatezonename var
           PrivateHostedZoneName: "{{ clustername }}.{{ publiczonename }}"
