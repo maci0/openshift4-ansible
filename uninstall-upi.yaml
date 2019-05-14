@@ -155,6 +155,10 @@
         state: absent
       loop: "{{ iam_users }}"
 
+    - set_fact:
+        privatezonename: "{{ clustername }}.{{ publiczonename }}"
+      when: privatezonename is not defined
+
     - name: Get public Route53 record
       route53:
         state: get
@@ -198,6 +202,15 @@
         alias_hosted_zone_id: "{{ route53_private.set.alias_hosted_zone_id }}"
         state: absent
       when: "'value' in route53_private.set"
+
+    # If the privatezoneid variable is not defined, we assume that the
+    # private Route53 zone was created as part of the cluster
+    # installation and we delete it.
+    - name: Terminate private Route53 zone
+      route53_zone:
+        zone: "{{ privatezonename }}"
+        state: absent
+      when: privatezoneid is not defined
 
     - name: Untag subnets
       command: aws ec2 delete-tags --resources "{{ item }}" --tags Key=kubernetes.io/cluster/{{ infraid }}
