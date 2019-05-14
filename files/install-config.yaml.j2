@@ -37,7 +37,11 @@ platform:
 {% if extra_instance_tags %}
     userTags: {{ extra_instance_tags | to_yaml }}
 {% endif %}
+{% if pull_secret is match("^'.*") %}
 pullSecret: {{ pull_secret }}
+{% else %}
+pullSecret: '{{ pull_secret }}'
+{% endif %}
 {% if ssh_key is defined %}
 sshKey: {{ ssh_key }}
 {% endif %}
