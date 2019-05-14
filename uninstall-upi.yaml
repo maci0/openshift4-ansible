@@ -45,6 +45,35 @@
         - item['state']['name'] != 'terminated'
       loop: "{{ ec2_instances.instances }}"
 
+    # We need to delete records in the private Route53 zone that were
+    # created by OpenShift. Otherwise, the cluster-infra
+    # CloudFormation stack cannot be deleted.
+
+    - set_fact:
+        privatezonename: "{{ clustername }}.{{ publiczonename }}"
+
+    - name: Get private Route53 record
+      route53:
+        state: get
+        zone: "{{ privatezonename }}"
+        private_zone: yes
+        record: "*.apps.{{ privatezonename }}"
+        type: A
+      register: route53_private
+
+    - name: Terminate private Route53 record
+      route53:
+        zone: "{{ privatezonename }}"
+        private_zone: yes
+        record: "*.apps.{{ privatezonename }}"
+        type: A
+        value: "{{ route53_private.set.value }}"
+        ttl: "{{ route53_private.set.ttl }}"
+        alias: true
+        alias_hosted_zone_id: "{{ route53_private.set.alias_hosted_zone_id }}"
+        state: absent
+      when: "'value' in route53_private.set"
+
     - name: Terminate other CloudFormation stacks
       cloudformation:
         stack_name: "{{ item }}"
@@ -174,35 +203,6 @@
         alias_hosted_zone_id: "{{ route53_public.set.alias_hosted_zone_id }}"
         state: absent
       when: "'value' in route53_public.set"
-
-    # If the variable privatezonename is defined, the private Route53
-    # was not created by us. It will still exist after we delete the
-    # OpenShift cluster, so we have to remove our DNS records from it.
-    - block:
-        # The record name has to include the publiczonename even for the
-        # private zone.
-        - name: Get private Route53 record
-          route53:
-            state: get
-            zone: "{{ privatezonename }}"
-            private_zone: yes
-            record: "*.apps.{{ clustername }}.{{ publiczonename }}"
-            type: A
-          register: route53_private
-
-        - name: Terminate private Route53 records
-          route53:
-            zone: "{{ privatezonename }}"
-            private_zone: yes
-            record: "*.apps.{{ clustername }}.{{ publiczonename }}"
-            type: A
-            value: "{{ route53_private.set.value }}"
-            ttl: "{{ route53_private.set.ttl }}"
-            alias: true
-            alias_hosted_zone_id: "{{ route53_private.set.alias_hosted_zone_id }}"
-            state: absent
-          when: "'value' in route53_private.set"
-      when: privatezonename is defined
 
     - name: Untag subnets
       command: aws ec2 delete-tags --resources "{{ item }}" --tags Key=kubernetes.io/cluster/{{ infraid }}
