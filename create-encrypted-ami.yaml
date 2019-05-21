@@ -2,8 +2,6 @@
 - name: Create encrypted AMI image
   gather_facts: false
   hosts: localhost
-  vars_files:
-    - "{{ playbook_dir }}/vars.yaml"
   tasks:
     - name: Get unencrypted RCOS AMI
       ec2_ami_facts:
