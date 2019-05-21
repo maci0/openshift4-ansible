@@ -167,11 +167,11 @@
 #TODO: change master ec2 instance termination protection to true and then remove old machine api objects after
 
     - name: tag public subnets
-      command: aws ec2 create-tags --resources {{ item }} --tags Key=kubernetes.io/cluster/{{ infraid }},Value=shared
+      command: aws --region {{ region }} ec2 create-tags --resources {{ item }} --tags Key=kubernetes.io/cluster/{{ infraid }},Value=shared
       with_items: "{{ publicsubnets.split(',') }}"
 
     - name: tag private subnets
-      command: aws ec2 create-tags --resources {{ item }} --tags Key=kubernetes.io/role/internal-elb,Value=""
+      command: aws --region {{ region }} ec2 create-tags --resources {{ item }} --tags Key=kubernetes.io/role/internal-elb,Value=""
       with_items: "{{ privatesubnets.split(',') }}"
 
     - name: "Check if /tmp/{{ clustername }}/bootstrap-complete exists"

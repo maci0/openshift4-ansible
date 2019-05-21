@@ -205,7 +205,7 @@
       when: "'value' in route53_public.set"
 
     - name: Untag subnets
-      command: aws ec2 delete-tags --resources "{{ item }}" --tags Key=kubernetes.io/cluster/{{ infraid }}
+      command: aws --region {{ region }} ec2 delete-tags --resources {{ item }} --tags Key=kubernetes.io/cluster/{{ infraid }}
       loop: "{{ publicsubnets.split(',') + privatesubnets.split(',') }}"
 
     - include_tasks: tasks/installer-config-directory.yaml
