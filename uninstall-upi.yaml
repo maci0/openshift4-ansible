@@ -150,7 +150,7 @@
     # them.
 
     - name: Get IAM users
-      command: aws iam list-users
+      command: "{{ awscli }} iam list-users"
       register: all_iam_users
 
     - set_fact:
@@ -165,7 +165,7 @@
       loop: "{{ iam_users }}"
 
     - name: Get IAM user access keys
-      command: aws iam list-access-keys --user-name {{ item }}
+      command: "{{ awscli }} iam list-access-keys --user-name {{ item }}"
       register: access_keys
       loop: "{{ iam_users }}"
 
@@ -205,7 +205,7 @@
       when: "'value' in route53_public.set"
 
     - name: Untag subnets
-      command: aws --region {{ region }} ec2 delete-tags --resources {{ item }} --tags Key=kubernetes.io/cluster/{{ infraid }}
+      command: "{{ awscli }} --region {{ region }} ec2 delete-tags --resources {{ item }} --tags Key=kubernetes.io/cluster/{{ infraid }}"
       loop: "{{ publicsubnets.split(',') + privatesubnets.split(',') }}"
 
     - include_tasks: tasks/installer-config-directory.yaml

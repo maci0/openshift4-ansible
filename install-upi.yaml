@@ -6,6 +6,19 @@
     KUBECONFIG: /tmp/{{ clustername }}/auth/kubeconfig
 
   tasks:
+     # Since this is the only task that needs to be run as root, we
+     # skip it and assume that the python-virtualenv package has
+     # already been installed.
+#    - name: Install python-virtualenv package
+#      yum:
+#        name: python-virtualenv
+#        state: present
+
+    - name: Create virtual Python environment
+      pip:
+        name: awscli
+        virtualenv: "{{ awscli_venv_path }}"
+
     - name: Get encrypted AMI
       ec2_ami_facts:
         filters:
@@ -167,11 +180,11 @@
 #TODO: change master ec2 instance termination protection to true and then remove old machine api objects after
 
     - name: tag public subnets
-      command: aws --region {{ region }} ec2 create-tags --resources {{ item }} --tags Key=kubernetes.io/cluster/{{ infraid }},Value=shared
+      command: "{{ awscli }} --region {{ region }} ec2 create-tags --resources {{ item }} --tags Key=kubernetes.io/cluster/{{ infraid }},Value=shared"
       with_items: "{{ publicsubnets.split(',') }}"
 
     - name: tag private subnets
-      command: aws --region {{ region }} ec2 create-tags --resources {{ item }} --tags Key=kubernetes.io/role/internal-elb,Value=""
+      command: "{{ awscli }} --region {{ region }} ec2 create-tags --resources {{ item }} --tags Key=kubernetes.io/role/internal-elb,Value=''"
       with_items: "{{ privatesubnets.split(',') }}"
 
     - name: "Check if /tmp/{{ clustername }}/bootstrap-complete exists"
