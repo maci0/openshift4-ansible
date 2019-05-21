@@ -1,3 +1,6 @@
+awscli_venv_path: "{{ lookup('env', 'HOME') }}/virtualenv/awscli"
+awscli: "{{ awscli_venv_path }}/bin/aws"
+
 region: "us-west-2"
 
 clustername: "foobar"
@@ -49,7 +52,7 @@ extra_instance_tags:
 
 # AWS bootstrap resources are deleted after a successful installation
 # if this is set to true.
-boostrap_cleanup: true
+bootstrap_cleanup: true
 
 # Enable this to only expose the API internally, requires ansible host to
 # be on the same network as cluster

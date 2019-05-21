@@ -303,5 +303,5 @@
         - include_tasks: tasks/bootstrap-s3-bucket.yaml
           vars:
             state: absent
-      when: boostrap_cleanup
+      when: bootstrap_cleanup
 ...
