@@ -5,7 +5,10 @@
   vars:
     state: absent
   tasks:
+    # Allow users to pass the infraid and clusterid on the command
+    # line, in case they lost the /tmp/{{ clustername }} directory.
     - import_tasks: tasks/get_infraid.yaml
+      when: infraid is not defined or clusterid is not defined
 
     - name: Get short infra ID
       set_fact:
