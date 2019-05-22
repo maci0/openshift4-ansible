@@ -304,4 +304,11 @@
           vars:
             state: absent
       when: bootstrap_cleanup
+
+    - debug:
+        msg:
+          - "OpenShift cluster {{ clustername }} has been installed successfully."
+          - ""
+          - "API: https://api.{{ clustername }}.{{ publiczonename }}:6443"
+          - "Web console: https://console-openshift-console.apps.{{ clustername }}.{{ publiczonename }}/"
 ...
