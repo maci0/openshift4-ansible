@@ -32,7 +32,7 @@
         rhcos_ami: "{{ ami_encrypted.images[0].image_id }}"
       when: ami_encrypted.images
 
-    - include_tasks: tasks/installer-config-directory.yaml
+    - import_tasks: tasks/installer-config-directory.yaml
 
     - name: "Check if /tmp/{{ clustername }}/metadata.json exists"
       stat:
@@ -58,7 +58,7 @@
     - set_fact:
         master_ignition: "{{ result.stdout | from_json }}"
 
-    - include_tasks: tasks/get_infraid.yaml
+    - import_tasks: tasks/get_infraid.yaml
 
 #    - debug:
 #        msg: "{{ master_ignition.ignition.security.tls.certificateAuthorities[0].source }}"
@@ -66,7 +66,7 @@
 #    - debug:
 #        msg: "{{ metadata_json.infraID }}"
 
-    - include_tasks: tasks/bootstrap-s3-bucket.yaml
+    - import_tasks: tasks/bootstrap-s3-bucket.yaml
 
     - name: upload bootstrap.ign to s3 bucket
       aws_s3:
@@ -300,7 +300,7 @@
             region: "{{ region }}"
             state: absent
 
-        - include_tasks: tasks/bootstrap-s3-bucket.yaml
+        - import_tasks: tasks/bootstrap-s3-bucket.yaml
           vars:
             state: absent
       when: bootstrap_cleanup

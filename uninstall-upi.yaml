@@ -5,7 +5,7 @@
   vars:
     state: absent
   tasks:
-    - include_tasks: tasks/get_infraid.yaml
+    - import_tasks: tasks/get_infraid.yaml
 
     - name: Get short infra ID
       set_fact:
@@ -85,7 +85,7 @@
 
     # Terminate S3 buckets created by OpenShift.
 
-    - include_tasks: tasks/bootstrap-s3-bucket.yaml
+    - import_tasks: tasks/bootstrap-s3-bucket.yaml
 
     - name: List S3 buckets
       aws_s3_bucket_facts:
@@ -208,5 +208,5 @@
       command: "{{ awscli }} --region {{ region }} ec2 delete-tags --resources {{ item }} --tags Key=kubernetes.io/cluster/{{ infraid }}"
       loop: "{{ publicsubnets.split(',') + privatesubnets.split(',') }}"
 
-    - include_tasks: tasks/installer-config-directory.yaml
+    - import_tasks: tasks/installer-config-directory.yaml
 ...
