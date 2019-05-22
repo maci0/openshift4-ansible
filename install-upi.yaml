@@ -6,18 +6,58 @@
     KUBECONFIG: /tmp/{{ clustername }}/auth/kubeconfig
 
   tasks:
-     # Since this is the only task that needs to be run as root, we
-     # skip it and assume that the python-virtualenv package has
-     # already been installed.
-#    - name: Install python-virtualenv package
-#      yum:
-#        name: python-virtualenv
-#        state: present
+    - name: Install python-virtualenv package
+      yum:
+        name: python-virtualenv
+        state: present
+      become: yes
 
     - name: Create virtual Python environment
       pip:
         name: awscli
         virtualenv: "{{ awscli_venv_path }}"
+
+    - name: Create bin directory
+      file:
+        path: "{{ bin_dir }}"
+        state: directory
+
+    # Downloading the binaries is slow. Check if they are already
+    # installed.
+    - name: Check if OpenShift installer is already installed
+      stat:
+        path: "{{openshift_install }}"
+      register: openshift_install_stat
+
+    - block:
+        - name: Install OpenShift installer and CLI
+          unarchive:
+            src: "{{ item }}"
+            remote_src: yes
+            dest: "{{ bin_dir }}"
+            mode: '755'
+            exclude:
+              - README.md
+          loop:
+            - "{{ openshift_install_url }}"
+            - "{{ openshift_cli_url }}"
+
+        - name: Copy OpenShift installer and CLI
+          file:
+            path: "{{ bin_dir }}/{{ item }}-{{ openshift_version }}"
+            src: "{{ bin_dir }}/{{ item }}"
+            state: hard
+          loop:
+            - openshift-install
+            - oc
+            - kubectl
+
+        - name: Configure bash completion
+          shell: |
+            {{ oc }} completion bash >/etc/bash_completion.d/openshift && \
+            {{ openshift_install }} completion bash >>/etc/bash_completion.d/openshift
+          become: yes
+      when: not openshift_install_stat.stat.exists
 
     - name: Get encrypted AMI
       ec2_ami_facts:
@@ -46,7 +86,7 @@
       when: stat_result.stat.exists == False
 
     - name: Create the cluster ignition configs
-      command: openshift-install create ignition-configs --dir=/tmp/{{ clustername }}
+      command: "{{ openshift_install }} create ignition-configs --dir=/tmp/{{ clustername }}"
       args:
         creates: /tmp/{{ clustername }}/metadata.json
       when: stat_result.stat.exists == False
@@ -180,11 +220,11 @@
 #TODO: change master ec2 instance termination protection to true and then remove old machine api objects after
 
     - name: tag public subnets
-      command: "{{ awscli }} --region {{ region }} ec2 create-tags --resources {{ item }} --tags Key=kubernetes.io/cluster/{{ infraid }},Value=shared"
+      command: "{{ aws }} --region {{ region }} ec2 create-tags --resources {{ item }} --tags Key=kubernetes.io/cluster/{{ infraid }},Value=shared"
       with_items: "{{ publicsubnets.split(',') }}"
 
     - name: tag private subnets
-      command: "{{ awscli }} --region {{ region }} ec2 create-tags --resources {{ item }} --tags Key=kubernetes.io/role/internal-elb,Value=''"
+      command: "{{ aws }} --region {{ region }} ec2 create-tags --resources {{ item }} --tags Key=kubernetes.io/role/internal-elb,Value=''"
       with_items: "{{ privatesubnets.split(',') }}"
 
     - name: "Check if /tmp/{{ clustername }}/bootstrap-complete exists"
@@ -194,7 +234,7 @@
 
     - name: Wait until bootstrap is complete
       shell: >
-        openshift-install wait-for bootstrap-complete --dir=/tmp/{{ clustername }} &&
+        {{ openshift_install }} wait-for bootstrap-complete --dir=/tmp/{{ clustername }} &&
         touch /tmp/{{ clustername }}/bootstrap-complete
       when: bootstrap_result.stat.exists == False
 
@@ -204,7 +244,7 @@
       register: finish
 
     - name: approve master certificates
-      shell: oc adm certificate approve $(oc get csr -o=jsonpath="{..metadata.name}")
+      shell: "{{ oc }} adm certificate approve $(oc get csr -o 'jsonpath={..metadata.name}')"
       register: oc_approve
       retries: 12
       delay: 10
@@ -220,43 +260,43 @@
 #      when: finish.stat.exists == False
 
 #    - name: import machinesets
-#      command: oc -n openshift-machine-api replace -f /tmp/{{ clustername }}/machineset-{{ item }}.yaml
+#      command: "{{ oc }} -n openshift-machine-api replace -f /tmp/{{ clustername }}/machineset-{{ item }}.yaml"
 #      with_sequence: start=0 count=3
 #      ignore_errors: yes
 #      when: finish.stat.exists == False
 
     - name: Fix worker machineset, securitygroup, subnet, ami and instanceprofile setting
       shell: |
-        oc -n openshift-machine-api patch machineset {{ infraid }}-worker-{{ region }}{{item.key}} -p '{"spec":{"template":{"spec":{"providerSpec":{"value":{"securityGroups":[{"filters":[{"name": "group-id", "values":["{{ cluster_security_stack.stack_outputs.WorkerSecurityGroupId }}"]}]}]}}}}}}' --type merge
-        oc -n openshift-machine-api patch machineset {{ infraid }}-worker-{{ region }}{{item.key}} -p '{"spec":{"template":{"spec":{"providerSpec":{"value":{"subnet":{"filters":[{"name": "subnet-id", "values":["{{ privatesubnets.split(',')[item.value | int] }}"]}]}}}}}}}' --type merge
-        oc -n openshift-machine-api patch machineset {{ infraid }}-worker-{{ region }}{{item.key}} -p '{"spec":{"template":{"spec":{"providerSpec":{"value":{"iamInstanceProfile":{"id": "{{ cluster_security_stack.stack_outputs.WorkerInstanceProfile }}"}}}}}}}' --type merge
-        oc -n openshift-machine-api patch machineset {{ infraid }}-worker-{{ region }}{{item.key}} -p '{"spec":{"template":{"spec":{"providerSpec":{"value":{"ami":{"id": "{{ rhcos_ami }}"}}}}}}}' --type merge
+        {{ oc }} -n openshift-machine-api patch machineset {{ infraid }}-worker-{{ region }}{{item.key}} -p '{"spec":{"template":{"spec":{"providerSpec":{"value":{"securityGroups":[{"filters":[{"name": "group-id", "values":["{{ cluster_security_stack.stack_outputs.WorkerSecurityGroupId }}"]}]}]}}}}}}' --type merge
+        {{ oc }} -n openshift-machine-api patch machineset {{ infraid }}-worker-{{ region }}{{item.key}} -p '{"spec":{"template":{"spec":{"providerSpec":{"value":{"subnet":{"filters":[{"name": "subnet-id", "values":["{{ privatesubnets.split(',')[item.value | int] }}"]}]}}}}}}}' --type merge
+        {{ oc }} -n openshift-machine-api patch machineset {{ infraid }}-worker-{{ region }}{{item.key}} -p '{"spec":{"template":{"spec":{"providerSpec":{"value":{"iamInstanceProfile":{"id": "{{ cluster_security_stack.stack_outputs.WorkerInstanceProfile }}"}}}}}}}' --type merge
+        {{ oc }} -n openshift-machine-api patch machineset {{ infraid }}-worker-{{ region }}{{item.key}} -p '{"spec":{"template":{"spec":{"providerSpec":{"value":{"ami":{"id": "{{ rhcos_ami }}"}}}}}}}' --type merge
       with_dict: {a: 0, b: 1, c: 2}
       when: finish.stat.exists == False
 
     - name: delete broken machines
-      command: oc -n openshift-machine-api delete machine -l "machine.openshift.io/cluster-api-machineset={{ infraid }}-worker-{{ region }}{{ item.key }}"
+      command: "{{ oc }} -n openshift-machine-api delete machine -l machine.openshift.io/cluster-api-machineset={{ infraid }}-worker-{{ region }}{{ item.key }}"
       with_dict: {a: 0, b: 1, c: 2}
       when: finish.stat.exists == False
 
 
 #    - name: delete broken machines
-#      command: oc -n openshift-machine-api delete machine -l machine.openshift.io/cluster-api-machine-role=master
+#      command: "{{ oc }} -n openshift-machine-api delete machine -l machine.openshift.io/cluster-api-machine-role=master"
 #      when: finish.stat.exists == False
 
 
 #    - name: Fix master machine loadbalancer, securitygroup, subnet, ami and instanceprofile setting
 #      shell: |
-#        oc -n openshift-machine-api patch machine {{ infraid }}-master-{{ item }} -p '{"spec":{"providerSpec":{"value":{"loadBalancers":[{"name": "{{ cluster_infra_stack.stack_outputs.InternalApiLoadBalancerName.split('/')[1] }}", "type": "network"}{% if api_internal_only != true %},{"name": "{{ cluster_infra_stack.stack_outputs.ExternalApiLoadBalancerName.split('/')[1] }}", "type": "network"}{% endif %}]}}}}' --type merge
-#        oc -n openshift-machine-api patch machine {{ infraid }}-master-{{ item }} -p '{"spec":{"providerSpec":{"value":{"securityGroups":[{"filters":[{"name": "group-id", "values":["{{ cluster_security_stack.stack_outputs.MasterSecurityGroupId }}"]}]}]}}}}' --type merge
-#        oc -n openshift-machine-api patch machine {{ infraid }}-master-{{ item }} -p '{"spec":{"providerSpec":{"value":{"subnet":{"filters":[{"name": "subnet-id", "values":["{{ privatesubnets.split(',')[item | int] }}"]}]}}}}}' --type merge
-#        oc -n openshift-machine-api patch machine {{ infraid }}-master-{{ item }} -p '{"spec":{"providerSpec":{"value":{"iamInstanceProfile":{"id": "{{ cluster_security_stack.stack_outputs.MasterInstanceProfile }}"}}}}}' --type merge
-#        oc -n openshift-machine-api patch machine {{ infraid }}-master-{{ item }} -p '{"spec":{"providerSpec":{"value":{"ami":{"id": "{{ rhcos_ami }}"}}}}}' --type merge
+#        {{ oc }} -n openshift-machine-api patch machine {{ infraid }}-master-{{ item }} -p '{"spec":{"providerSpec":{"value":{"loadBalancers":[{"name": "{{ cluster_infra_stack.stack_outputs.InternalApiLoadBalancerName.split('/')[1] }}", "type": "network"}{% if api_internal_only != true %},{"name": "{{ cluster_infra_stack.stack_outputs.ExternalApiLoadBalancerName.split('/')[1] }}", "type": "network"}{% endif %}]}}}}' --type merge
+#        {{ oc }} -n openshift-machine-api patch machine {{ infraid }}-master-{{ item }} -p '{"spec":{"providerSpec":{"value":{"securityGroups":[{"filters":[{"name": "group-id", "values":["{{ cluster_security_stack.stack_outputs.MasterSecurityGroupId }}"]}]}]}}}}' --type merge
+#        {{ oc }} -n openshift-machine-api patch machine {{ infraid }}-master-{{ item }} -p '{"spec":{"providerSpec":{"value":{"subnet":{"filters":[{"name": "subnet-id", "values":["{{ privatesubnets.split(',')[item | int] }}"]}]}}}}}' --type merge
+#        {{ oc }} -n openshift-machine-api patch machine {{ infraid }}-master-{{ item }} -p '{"spec":{"providerSpec":{"value":{"iamInstanceProfile":{"id": "{{ cluster_security_stack.stack_outputs.MasterInstanceProfile }}"}}}}}' --type merge
+#        {{ oc }} -n openshift-machine-api patch machine {{ infraid }}-master-{{ item }} -p '{"spec":{"providerSpec":{"value":{"ami":{"id": "{{ rhcos_ami }}"}}}}}' --type merge
 
 
-#        oc -n openshift-machine-api patch machine {{ infraid }}-master-{{ item }} -p '{"spec":{"providerSpec":{"value":{"loadBalancers":[{"name": "{{ cluster_infra_stack.stack_outputs.InternalApiLoadBalancerName.split('/')[1] }}", "type": "network"},{"name": "{{ cluster_infra_stack.stack_outputs.ExternalApiLoadBalancerName.split('/')[1] }}", "type": "network"}]}}}}' --type merge
+#        {{ oc }} -n openshift-machine-api patch machine {{ infraid }}-master-{{ item }} -p '{"spec":{"providerSpec":{"value":{"loadBalancers":[{"name": "{{ cluster_infra_stack.stack_outputs.InternalApiLoadBalancerName.split('/')[1] }}", "type": "network"},{"name": "{{ cluster_infra_stack.stack_outputs.ExternalApiLoadBalancerName.split('/')[1] }}", "type": "network"}]}}}}' --type merge
 #
-#       oc -n openshift-machine-api patch machine {{ infraid }}-master-{{ item }} -p '{"spec":{"providerSpec":{"value":{"subnet":[{"filters":[{"name": "subnet-id", "values":["{{ privatesubnets.split(',')[item | int] }}"]}]}]}}}}' --type merge
+#       {{ oc }} -n openshift-machine-api patch machine {{ infraid }}-master-{{ item }} -p '{"spec":{"providerSpec":{"value":{"subnet":[{"filters":[{"name": "subnet-id", "values":["{{ privatesubnets.split(',')[item | int] }}"]}]}]}}}}' --type merge
 #      with_sequence: start=0 count=3
 
 
@@ -267,7 +307,7 @@
       when: finish.stat.exists == False
 
     - name: fix dns settings
-      command: oc replace -f /tmp/{{ clustername }}/dnses.yaml
+      command: "{{ oc }} replace -f /tmp/{{ clustername }}/dnses.yaml"
       when: finish.stat.exists == False
         
 #    - name: workaround for missing kubeadmin-password file
@@ -276,19 +316,19 @@
 #        content: "REDACTED, use kubeconfig instead"
 
     - name: Wait for ingress controller
-      command: oc get -n openshift-ingress-operator ingresscontroller/default
+      command: "{{ oc }} get -n openshift-ingress-operator ingresscontroller/default"
       register: ingress_controller
       until: ingress_controller.rc == 0
       retries: 60
       delay: 10
 
     - name: Scale ingress controller replicas
-      command: oc patch -n openshift-ingress-operator -p '{"spec":{"replicas":6}}' --type merge ingresscontroller/default
+      command: "{{ oc }} patch -n openshift-ingress-operator -p '{\"spec\":{\"replicas\":6}}' --type merge ingresscontroller/default"
       when: finish.stat.exists == False
 
     - name: Wait until install is complete
       shell: >
-        openshift-install wait-for install-complete --dir=/tmp/{{ clustername }} &&
+        {{ openshift_install }} wait-for install-complete --dir=/tmp/{{ clustername }} &&
         touch /tmp/{{ clustername }}/finish
       when: finish.stat.exists == False
 

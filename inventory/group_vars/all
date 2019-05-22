@@ -1,5 +1,19 @@
+---
+# Directory where the AWS CLI will be installed
 awscli_venv_path: "{{ lookup('env', 'HOME') }}/virtualenv/awscli"
-awscli: "{{ awscli_venv_path }}/bin/aws"
+aws: "{{ awscli_venv_path }}/bin/aws"
+
+# Directory where the openshift-install and oc binaries will be installed
+bin_dir: "{{ lookup('env', 'HOME') }}/bin"
+
+# OpenShift version to install
+openshift_version: "4.1.0-rc.5"
+
+openshift_install_url: https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/openshift-install-linux-{{ openshift_version }}.tar.gz
+openshift_cli_url: https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/openshift-client-linux-{{ openshift_version }}.tar.gz
+
+openshift_install: "{{ bin_dir }}/openshift-install-{{ openshift_version }}"
+oc: "{{ bin_dir }}/oc-{{ openshift_version }}"
 
 region: "us-west-2"
 
@@ -57,3 +71,4 @@ bootstrap_cleanup: true
 # Enable this to only expose the API internally, requires ansible host to
 # be on the same network as cluster
 api_internal_only: true
+...

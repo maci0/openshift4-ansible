@@ -1,12 +1,18 @@
 # openshift4-ansible
 
-This playbook creates the OpenShift 4 UPI (User provided Infrastructure) on AWS into an existing VPC with existing private and public subnets and DNS Zones.
+This playbook creates the OpenShift 4 UPI (User provided
+Infrastructure) on AWS into an existing VPC with existing private and
+public subnets and DNS Zones.
 
-It is also possible to deploy the API server without exposing it to the internet, this will require that the host that runs this ansible playbook does live in the same VPC.
+It is also possible to deploy the API server without exposing it to
+the Internet, this will require that the host that runs this Ansible
+playbook can access the VPC subnets.
 
-The Cloudformation templates are based on these: https://github.com/openshift/installer/tree/master/upi/aws/cloudformation
+The Cloudformation templates are based on these:
+https://github.com/openshift/installer/tree/master/upi/aws/cloudformation
 
-Some information has to be provided. Mainly information about your aws VPC, your subnets etc. See `vars.yaml`
+Some information has to be provided. Mainly information about your AWS
+VPC, your subnets etc. See `inventory/group_vars/all`
 
 
 ## Setup
@@ -20,68 +26,41 @@ To set up a bastion host follow these steps:
 
 Start with a RHEL7 Instance.
 
-Become root and install the needed tools.
+Become root and install the needed tools:
+
 ```bash
-sudo su -
+sudo -i
 
-yum -y install unzip python wget
+subscription-manager repos --enable rhel-7-server-ansible-2.8-rpms
 
-curl -L "https://s3.amazonaws.com/aws-cli/awscli-bundle.zip" -o "awscli-bundle.zip"
-unzip awscli-bundle.zip
+yum install -y ansible
 
-./awscli-bundle/install -i /usr/local/aws -b /bin/aws
+yum install -y \
+  https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
 
-aws --version
-rm -rf /root/awscli-bundle /root/awscli-bundle.zip
+yum -y install \
+  python2-boto python2-boto3 python2-simplejson
 
-OPENSHIFT_RELEASE=4.1.0-rc.5
-curl -L -O https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/openshift-install-linux-${OPENSHIFT_RELEASE}.tar.gz
-tar xzf openshift-install-linux-${OPENSHIFT_RELEASE}.tar.gz --overwrite -C /usr/bin
-
-rm -f openshift-install-linux-${OPENSHIFT_RELEASE}.tar.gz
-
-curl -L -O https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/openshift-client-linux-${OPENSHIFT_RELEASE}.tar.gz
-tar xzf openshift-client-linux-${OPENSHIFT_RELEASE}.tar.gz --overwrite -C /usr/bin
-
-rm -f openshift-client-linux-${OPENSHIFT_RELEASE}.tar.gz
-
-oc completion bash >/etc/bash_completion.d/openshift
-openshift-install completion >> /etc/bash_completion.d/openshift
-
-source /usr/local/aws/bin/activate
-pip install ansible boto3 botocore boto
-cp /usr/lib64/python2.7/site-packages/selinux /usr/local/aws/lib/python2.7/site-packages/ -r
+yum erase -y epel-release
 
 exit
 ```
 
-As user:
+With your own account, create ~/.aws/credentials with the following
+content, replacing the AWSKEY and AWSSECRETKEY with the right values
+from AWS.
 
-```bash
-source /etc/bash_completion.d/openshift
-
-export AWSKEY=MYSUPERSECRETKEY
-export AWSSECRETKEY=MYSUPERSECRETSECRETKEY
-export REGION=us-west-2
-
-mkdir $HOME/.aws
-cat << EOF >>  $HOME/.aws/credentials
+```
 [default]
-aws_access_key_id = ${AWSKEY}
-aws_secret_access_key = ${AWSSECRETKEY}
-region = $REGION
-EOF
-
-aws sts get-caller-identity
+aws_access_key_id = AWSKEY
+aws_secret_access_key = AWSSECRETKEY
 ```
 
 ## Usage
 
-Modify `inventory/group_vars/all`
+Modify `inventory/group_vars/all`.
 
 ```bash
-source /usr/local/aws/bin/activate
-
 ansible-playbook install-upi.yaml
 ```
 
@@ -102,8 +81,10 @@ the installation is started. This can be done by running
 ansible-playbook create-encrypted-ami.yaml
 ```
 
-The playbook uses the AMI ID `rhcos_ami` from `vars.yaml` as the source and creates a private AMI that is identical 
-to the source AMI, except that disk encryption is enabled.
+The playbook uses the AMI ID `rhcos_ami` from `vars.yaml` as the
+source and creates a private AMI that is identical to the source AMI,
+except that disk encryption is enabled.
 
-install-upi.yaml looks for a private AMI created by `create-encrypted-ami.yaml`. If none is found, it uses AMI ID 
-`rhcos_ami` from `vars.yaml`.
+install-upi.yaml looks for a private AMI created by
+`create-encrypted-ami.yaml`. If none is found, it uses AMI ID
+`rhcos_ami` from `inventory/group_vars/all`.
