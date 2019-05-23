@@ -350,7 +350,7 @@
         - import_tasks: tasks/bootstrap-s3-bucket.yaml
           vars:
             state: absent
-      when: bootstrap_cleanup
+      when: bootstrap_cleanup | bool
 
     - debug:
         msg:
