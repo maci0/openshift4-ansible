@@ -1,5 +1,6 @@
 - name: read Infrastructure ID from metadata.json
   command: cat /tmp/{{ clustername }}/metadata.json
+  changed_when: false
   register: metadata_result
 
 - set_fact:
