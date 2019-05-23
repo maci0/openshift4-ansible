@@ -58,12 +58,6 @@
             - openshift-install
             - oc
             - kubectl
-
-        - name: Configure bash completion
-          shell: |
-            {{ oc }} completion bash >/etc/bash_completion.d/openshift && \
-            {{ openshift_install }} completion bash >>/etc/bash_completion.d/openshift
-          become: yes
       when: not openshift_install_stat.stat.exists
 
     - name: Get encrypted AMI
