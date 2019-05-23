@@ -1,10 +1,10 @@
 ---
 # Directory where the AWS CLI will be installed
-awscli_venv_path: "{{ lookup('env', 'HOME') }}/virtualenv/awscli"
+awscli_venv_path: ~/virtualenv/awscli
 aws: "{{ awscli_venv_path }}/bin/aws"
 
 # Directory where the openshift-install and oc binaries will be installed
-bin_dir: "{{ lookup('env', 'HOME') }}/bin"
+bin_dir: ~/bin
 
 # OpenShift version to install
 openshift_version: "4.1.0-rc.5"
