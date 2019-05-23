@@ -6,11 +6,18 @@
     KUBECONFIG: /tmp/{{ clustername }}/auth/kubeconfig
 
   tasks:
+    - name: Check if virtualenv is installed
+      command: virtualenv --version
+      ignore_errors: yes
+      changed_when: false
+      register: virtualenv_cmd
+
     - name: Install python-virtualenv package
       yum:
         name: python-virtualenv
         state: present
       become: yes
+      when: not virtualenv_cmd is success
 
     - name: Create virtual Python environment
       pip:
