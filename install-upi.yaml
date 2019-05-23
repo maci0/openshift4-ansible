@@ -167,6 +167,12 @@
 #    - debug:
 #        msg: "{{ cluster_security_stack.stack_outputs.MasterSecurityGroupId }}"
 
+    - name: Set default tags
+      set_fact:
+        default_tags:
+          clustername: "{{ clustername }}"
+          infraid: "{{ infraid }}"
+
     - name: Create UPI Bootstrap (EC2 Instance, Security Groups and IAM)
       cloudformation:
         stack_name: "{{ infraid }}-cluster-bootstrap"
@@ -186,15 +192,7 @@
           InternalApiTargetGroupArn: "{{ cluster_infra_stack.stack_outputs.InternalApiTargetGroupArn }}"
           InternalServiceTargetGroupArn: "{{ cluster_infra_stack.stack_outputs.InternalServiceTargetGroupArn }}"
           RegisterNlbIpTargetsLambdaArn: "{{ cluster_infra_stack.stack_outputs.RegisterNlbIpTargetsLambda }}"
-        tags:
-          clustername: "{{ clustername }}"
-          infraid: "{{ infraid }}"
-
-    - name: Set default master tags
-      set_fact:
-        default_master_tags:
-          clustername: "{{ clustername }}"
-          infraid: "{{ infraid }}"
+        tags: "{{ default_tags | combine(extra_instance_tags) }}"
 
     - name: Create UPI Node Launch (EC2 master instances)
       cloudformation:
@@ -222,7 +220,7 @@
 #this is confusing but right for in some cases. in others use the privatezonename var
           PrivateHostedZoneName: "{{ clustername }}.{{ publiczonename }}"
           CertificateAuthorities: "{{ master_ignition.ignition.security.tls.certificateAuthorities[0].source }}"
-        tags: "{{ default_master_tags | combine(extra_instance_tags) }}"
+        tags: "{{ default_tags | combine(extra_instance_tags) }}"
 
 #TODO: change master ec2 instance termination protection to true and then remove old machine api objects after
 
