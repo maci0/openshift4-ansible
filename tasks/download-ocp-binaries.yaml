@@ -1,0 +1,35 @@
+- name: Create bin directory
+  file:
+    path: "{{ bin_dir }}"
+    state: directory
+
+# Downloading the binaries is slow. Check if they are already
+# installed.
+- name: Check if OpenShift installer is already installed
+  stat:
+    path: "{{openshift_install }}"
+  register: openshift_install_stat
+
+- block:
+    - name: Install OpenShift installer and CLI
+      unarchive:
+        src: "{{ item }}"
+        remote_src: yes
+        dest: "{{ bin_dir }}"
+        mode: '755'
+        exclude:
+          - README.md
+      loop:
+        - "{{ openshift_install_url }}"
+        - "{{ openshift_cli_url }}"
+
+    - name: Copy OpenShift installer and CLI
+      file:
+        path: "{{ bin_dir }}/{{ item }}-{{ openshift_version }}"
+        src: "{{ bin_dir }}/{{ item }}"
+        state: hard
+      loop:
+        - openshift-install
+        - oc
+        - kubectl
+  when: not openshift_install_stat.stat.exists
