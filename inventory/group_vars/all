@@ -7,7 +7,7 @@ aws: "{{ awscli_venv_path }}/bin/aws"
 bin_dir: ~/bin
 
 # OpenShift version to install
-openshift_version: "4.1.0-rc.5"
+openshift_version: "4.1.0"
 
 openshift_install_url: https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/openshift-install-linux-{{ openshift_version }}.tar.gz
 openshift_cli_url: https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/openshift-client-linux-{{ openshift_version }}.tar.gz
