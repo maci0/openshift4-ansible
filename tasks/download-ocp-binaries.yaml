@@ -7,7 +7,7 @@
 # installed.
 - name: Check if OpenShift installer is already installed
   stat:
-    path: "{{openshift_install }}"
+    path: "{{ openshift_install }}"
   register: openshift_install_stat
 
 - block:
