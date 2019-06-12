@@ -48,6 +48,25 @@
         - item['state']['name'] != 'terminated'
       loop: "{{ ec2_instances.instances }}"
 
+    - name: Gather Dynamic EBS volumes
+      ec2_vol:
+        state: list
+        region: "{{ region }}"
+      register: volumes
+
+    - name: Terminate Dynamic EBS volumes
+      ec2_vol:
+        id: "{{ item['id'] }}"
+        region: "{{ region }}"
+        state: absent
+      when:
+        - "'Name' in item['tags']"
+        - "'kubernetes-dynamic-pvc-' in item['tags']['Name']"
+        - "'kubernetes.io/cluster/' ~ infraid in item['tags']"
+        - item['tags']['kubernetes.io/cluster/' ~ infraid] == 'owned'
+        - item['status'] == 'available'
+      loop: "{{ volumes['volumes'] }}"
+
     # We need to delete records in the private Route53 zone that were
     # created by OpenShift. Otherwise, the cluster-infra
     # CloudFormation stack cannot be deleted.
