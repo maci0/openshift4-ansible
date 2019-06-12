@@ -47,14 +47,16 @@
         - item['tags']['kubernetes.io/cluster/' ~ infraid] == 'owned'
         - item['state']['name'] != 'terminated'
       loop: "{{ ec2_instances.instances }}"
+      loop_control:
+        label: "{{ item['tags']['Name'] }}"
 
-    - name: Gather Dynamic EBS volumes
+    - name: List EBS volumes
       ec2_vol:
         state: list
         region: "{{ region }}"
       register: volumes
 
-    - name: Terminate Dynamic EBS volumes
+    - name: Terminate persistent volumes
       ec2_vol:
         id: "{{ item['id'] }}"
         region: "{{ region }}"
@@ -66,6 +68,8 @@
         - item['tags']['kubernetes.io/cluster/' ~ infraid] == 'owned'
         - item['status'] == 'available'
       loop: "{{ volumes['volumes'] }}"
+      loop_control:
+        label: "{{ item['tags']['Name'] }}"
 
     # We need to delete records in the private Route53 zone that were
     # created by OpenShift. Otherwise, the cluster-infra
@@ -147,6 +151,8 @@
         - "'kubernetes.io/cluster/' ~ infraid in item['tags']"
         - item['tags']['kubernetes.io/cluster/' ~ infraid] == 'owned'
       loop: "{{ ec2_elbs.elbs }}"
+      loop_control:
+        label: "{{ item['name'] }}"
 
     - name: Get security groups
       ec2_group_facts:
@@ -171,6 +177,8 @@
         - "'kubernetes.io/cluster/' ~ infraid in item['tags']"
         - item['tags']['kubernetes.io/cluster/' ~ infraid] == 'owned'
       loop: "{{ ec2_groups.security_groups }}"
+      loop_control:
+        label: "{{ item['group_name'] }}"
 
     # The ID at the end of the IAM usernames is random, it does not
     # match the cluster's infraid. There's no Ansible module that
