@@ -48,7 +48,7 @@
         - item['state']['name'] != 'terminated'
       loop: "{{ ec2_instances.instances }}"
       loop_control:
-        label: "{{ item['tags']['Name'] }}"
+        label: "{{ item['tags']['Name'] | default(item['id']) }}"
 
     - name: List EBS volumes
       ec2_vol:
@@ -69,7 +69,7 @@
         - item['status'] == 'available'
       loop: "{{ volumes['volumes'] }}"
       loop_control:
-        label: "{{ item['tags']['Name'] }}"
+        label: "{{ item['tags']['Name'] | default(item['id']) }}"
 
     # We need to delete records in the private Route53 zone that were
     # created by OpenShift. Otherwise, the cluster-infra
