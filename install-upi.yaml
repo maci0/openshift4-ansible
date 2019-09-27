@@ -52,11 +52,21 @@
         dest: /tmp/{{ clustername }}/install-config.yaml
       when: stat_result.stat.exists == False
 
+    - name: Create manifests
+      command: "{{ openshift_install }} create manifests --dir=/tmp/{{ clustername }}"
+      args:
+        creates: /tmp/{{ clustername }}/manifests/cluster-config.yaml
+
+    - name: Delete master machine manifests
+      file:
+        path: /tmp/{{ clustername }}/openshift/99_openshift-cluster-api_master-machines-{{ item }}.yaml
+        state: absent
+      with_sequence: start=0 count=3
+
     - name: Create the cluster ignition configs
       command: "{{ openshift_install }} create ignition-configs --dir=/tmp/{{ clustername }}"
       args:
         creates: /tmp/{{ clustername }}/metadata.json
-      when: stat_result.stat.exists == False
 
     - name: read master CA info
       command: cat /tmp/{{ clustername }}/master.ign
