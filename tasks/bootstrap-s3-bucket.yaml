@@ -7,3 +7,7 @@
     tags: "{{ {'kubernetes.io/cluster/' ~ infraid: 'owned', 'clusterid': infraid} }}"
   retries: 3
   delay: 3
+
+- name: Block public access to S3 bucket ( bootstrap config )
+  command: "{{ aws }} --region {{ region }} s3api put-public-access-block --bucket {{ infraid }}-bootstrap --public-access-block-configuration '{\"BlockPublicAcls\":true, \"IgnorePublicAcls\":true, \"BlockPublicPolicy\":true, \"RestrictPublicBuckets\":true}'"
+  when: state is undefined or 'absent' not in state
