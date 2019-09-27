@@ -217,19 +217,6 @@
       when: not finish.stat.exists
       ignore_errors: yes
 
-#    - name: render machineset template
-#      template:
-#        src: files/machinesets.yaml.j2
-#        dest: /tmp/{{ clustername }}/machineset-{{ item.value }}.yaml
-#      with_dict: {a: 0, b: 1, c: 2}
-#      when: finish.stat.exists == False
-
-#    - name: import machinesets
-#      command: "{{ oc }} -n openshift-machine-api replace -f /tmp/{{ clustername }}/machineset-{{ item }}.yaml"
-#      with_sequence: start=0 count=3
-#      ignore_errors: yes
-#      when: finish.stat.exists == False
-
     - name: Fix worker machineset, securitygroup, subnet, ami and instanceprofile setting
       shell: |
         {{ oc }} -n openshift-machine-api patch machineset {{ infraid }}-worker-{{ region }}{{item.key}} -p '{"spec":{"template":{"spec":{"providerSpec":{"value":{"securityGroups":[{"filters":[{"name": "group-id", "values":["{{ cluster_security_stack.stack_outputs.WorkerSecurityGroupId }}"]}]}]}}}}}}' --type merge
