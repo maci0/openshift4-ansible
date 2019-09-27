@@ -35,8 +35,9 @@ vpccidr: "10.30.0.0/18"
 clustercidr: "10.128.0.0/14"
 servicecidr: "172.30.0.0/16"
 
-# Public AMI rhcos-410.8.20190417.1-hvm
-rhcos_ami: "ami-0f6c404c76c2f94dd"
+# RHCOS AMI for us-west-2 from
+# https://docs.openshift.com/container-platform/4.1/installing/installing_aws_user_infra/installing-aws-user-infra.html#installation-aws-user-infra-rhcos-ami_installing-aws-user-infra
+rhcos_ami: ami-00745fcbb14a863ed
 
 # This is used by create-encrypted-ami.yaml to tag the private AMI
 # which we copy from the public AMI to enable disk
