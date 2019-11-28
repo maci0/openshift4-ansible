@@ -1,12 +1,8 @@
-{
-    "Statement": [
-        {
-            "Action": [
                 "autoscaling:DescribeAutoScalingGroups",
                 "cloudformation:CreateStack",
                 "cloudformation:DeleteStack",
-                "cloudformation:DescribeStackEvents",
                 "cloudformation:DescribeStacks",
+                "cloudformation:DescribeStackEvents",
                 "cloudformation:ListStackResources",
                 "cloudformation:UpdateStack",
                 "ec2:AllocateAddress",
@@ -107,6 +103,10 @@
                 "elasticloadbalancing:RegisterInstancesWithLoadBalancer",
                 "elasticloadbalancing:RegisterTargets",
                 "elasticloadbalancing:SetLoadBalancerPoliciesOfListener",
+                "lambda:CreateFunction",
+                "lambda:DeleteFunction",
+                "lambda:GetFunctionConfiguration",
+                "lambda:InvokeFunction",
                 "iam:AddRoleToInstanceProfile",
                 "iam:CreateAccessKey",
                 "iam:CreateInstanceProfile",
@@ -137,10 +137,6 @@
                 "iam:SimulatePrincipalPolicy",
                 "iam:TagRole",
                 "iam:TagUser",
-                "lambda:CreateFunction",
-                "lambda:DeleteFunction",
-                "lambda:GetFunctionConfiguration",
-                "lambda:InvokeFunction",
                 "route53:ChangeResourceRecordSets",
                 "route53:ChangeTagsForResource",
                 "route53:CreateHostedZone",
@@ -176,11 +172,11 @@
                 "s3:GetObjectVersion",
                 "s3:GetReplicationConfiguration",
                 "s3:HeadBucket",
-                "s3:ListAllMyBuckets",
                 "s3:ListBucket",
+                "s3:ListBuckets",
+                "s3:ListAllMyBuckets",                
                 "s3:ListBucketMultipartUploads",
                 "s3:ListBucketVersions",
-                "s3:ListBuckets",
                 "s3:PutBucketAcl",
                 "s3:PutBucketTagging",
                 "s3:PutEncryptionConfiguration",
@@ -189,12 +185,3 @@
                 "s3:PutObjectAcl",
                 "s3:PutObjectTagging",
                 "tag:GetResources"
-            ],
-            "Effect": "Allow",
-            "Resource": [
-                "*"
-            ]
-        }
-    ],
-    "Version": "2012-10-17"
-}
