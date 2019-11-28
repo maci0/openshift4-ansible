@@ -1,0 +1,36 @@
+---
+
+- block:
+  - name: 1.0 | Creating LDAP secrets | tasks/post_installation.yaml
+    k8s:
+      state: present
+      definition: "{{ lookup('template', 'files/LDAPsecret.yaml.j2') }}"
+      validate:
+      # Requires the kubernetes-validate python module
+        fail_on_error: no
+        strict: yes
+
+  - name: 2.0 | Creating LDAP Custom Resource | tasks/post_installation.yaml
+    k8s:
+      state: present
+      definition: "{{ lookup('template', 'files/Oauth.yaml.j2') }}"
+      validate:
+      # Requires the kubernetes-validate python module
+        fail_on_error: no
+        strict: yes
+  when: enable_ldap_integration == true
+
+- block:
+  - name: 3.0 | Creating Cluster Monitoring | tasks/post_installation.yaml
+    k8s:
+      state: present
+      definition: "{{ lookup('template', 'files/cluster-monitoring-config.yaml.j2') }}"
+      validate:
+        fail_on_error: no
+        strict: yes
+
+  - name: 4.0 | Scale the Replicas | tasks/post_installation.yaml
+    shell:
+      oc scale statefulset/prometheus-k8s --replicas="{{ prometheus_statefulset_replicas }}" -n openshift-monitoring
+    ignore_errors: true
+  when: enable_cluster_monitoring == true

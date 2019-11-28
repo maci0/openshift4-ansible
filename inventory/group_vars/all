@@ -1,0 +1,104 @@
+---
+# Directory where the AWS CLI will be installed
+awscli_venv_path: ~/virtualenv/awscli
+aws: "{{ awscli_venv_path }}/bin/aws"
+
+# Directory where the openshift-install and oc binaries will be installed
+bin_dir: ~/bin
+
+# OpenShift version to install
+openshift_version: "4.2.7"
+
+openshift_install_url: https://mirror.openshift.com/pub/openshift-v4/clients/ocp/{{ openshift_version }}/openshift-install-linux-{{ openshift_version }}.tar.gz
+openshift_cli_url: https://mirror.openshift.com/pub/openshift-v4/clients/ocp/{{ openshift_version }}/openshift-client-linux-{{ openshift_version }}.tar.gz
+
+openshift_install: "{{ bin_dir }}/openshift-install-{{ openshift_version }}"
+oc: "{{ bin_dir }}/oc-{{ openshift_version }}"
+
+region: "ap-southeast-2"
+
+clustername: "ipi-test"
+
+publiczoneid: "Z2ORJM5PPC29C7"
+publiczonename: "9cd5.sandbox1011.opentlc.com"
+
+privatezoneid: "Z04341453TFUYWVPR85NO"
+privatezonename: "ipi-test.9cd5.sandbox1011.opentlc.com"
+
+# subnet order matters, needs to be az1,az2,az3,etc
+privatesubnets: "subnet-04ff1ddf823a249c2,subnet-05cb1bf77be818c04,subnet-0add7a8f5bd253969"
+publicsubnets: "subnet-0c7eb4e1da842d10f,subnet-0530e8e32568ee94f,subnet-02c38489901823742"
+
+vpcid: "vpc-04a5fc89bd6a946e3"
+vpccidr: "10.0.0.0/16"
+
+clustercidr: "10.128.0.0/14"
+servicecidr: "172.30.0.0/16"
+
+# Public AMI rhcos-410.8.20190417.1-hvm
+rhcos_ami: "ami-0391e92574fb09e08"
+
+# This is used by create-encrypted-ami.yaml to tag the private AMI
+# which we copy from the public AMI to enable disk
+# encryption. install-upi.yaml uses this tag to find the AMI to use
+# for master and worker nodes.
+rhcos_version: "427"
+
+worker_instance: "m5.2xlarge"
+master_instance: "m4.2xlarge"
+
+#ssh_key is optional either set or comment out
+ssh_key: ""
+
+#get from try.openshift.com
+pull_secret: ''
+
+# Additional tags to assign to the EC2 instances created by the
+# installation playbook and by the OpenShift worker machine set.
+#
+# The "auto_shut_bool" tag is only an example, it will not do anything
+# without a script that looks for this tag. AWS tags are strings, we
+# have to quote the "True" value that otherwise would be sent to the
+# AWS API as a boolean.
+extra_instance_tags:
+  auto_shut_bool: 'True'
+  department: Engineering
+
+# AWS bootstrap resources are deleted after a successful installation
+# if this is set to true.
+bootstrap_cleanup: true
+
+# Enable this to only expose the API internally, requires ansible host to
+# be on the same network as cluster
+api_internal_only: false
+
+#########################
+# LDAP
+#########################
+# Enable LDAP integration, disabled by default
+enable_ldap_integration: false
+# LDAP bind password in plain text, ideally should be in Ansible Vault or other secrets management tool
+ldap_bindPassword: "SUPERSECRET"
+# Name for the LDAP secret containing LDAP password
+ldap_secret_name: "ldap-secret1"
+# LDAP identity provider name
+ldap_idp_name: "ldapidp1"
+# Bind DN
+bindDN: "a@X.test.example.au"
+# LDAP URL
+ldap_url: "ldap://X.test.example.au:389/OU=Users,OU=ad,DC=X,DC=test,DC=example,DC=au"
+
+#########################
+# Cluster Monitoring
+#########################
+# Enable Cluster Monitoring Storage and Retention
+enable_cluster_monitoring: false
+# Required Storage Class
+prometheus_storage_class: "gp2"
+# Required Prometheus Storage
+prometheus_storage_size: "20Gi"
+# Required Prometheus Retention Period (h (hours), d (days), w (weeks), or y (years))
+prometheus_retention_time: "7d"
+# Prometheus Replicas
+prometheus_statefulset_replicas: "3"
+...

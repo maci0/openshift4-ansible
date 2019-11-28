@@ -1,0 +1,8 @@
+---
+- set_fact:
+    metadata: "{{ lookup('file', '/tmp/' ~ clustername ~ '/metadata.json') | from_json }}"
+
+- set_fact:
+    infraid: "{{ metadata.infraID }}"
+    clusterid: "{{ metadata.clusterID }}"
+...

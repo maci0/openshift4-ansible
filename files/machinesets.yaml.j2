@@ -1,0 +1,60 @@
+apiVersion: machine.openshift.io/v1beta1
+kind: MachineSet
+metadata:
+  labels:
+    machine.openshift.io/cluster-api-cluster: {{ infraid }}
+    machine.openshift.io/cluster-api-machine-role: worker
+    machine.openshift.io/cluster-api-machine-type: worker
+  name: {{ infraid }}-worker-{{ region }}{{item.key}}
+  namespace: openshift-machine-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      machine.openshift.io/cluster-api-cluster: {{ infraid }}
+      machine.openshift.io/cluster-api-machineset: {{ infraid }}-worker-{{ region }}{{item.key}}
+  template:
+    metadata:
+      labels:
+        machine.openshift.io/cluster-api-cluster: {{ infraid }}
+        machine.openshift.io/cluster-api-machine-role: worker
+        machine.openshift.io/cluster-api-machine-type: worker
+        machine.openshift.io/cluster-api-machineset: {{ infraid }}-worker-{{ region }}{{item.key}}
+    spec:
+      providerSpec:
+        value:
+          ami:
+            id: "{{ rhcos_ami }}"
+          apiVersion: awsproviderconfig.openshift.io/v1beta1
+          credentialsSecret:
+            name: aws-cloud-credentials
+          deviceIndex: 0
+          iamInstanceProfile:
+            id: "{{ cluster_security_stack.stack_outputs.WorkerInstanceProfile }}"
+          instanceType: m5.2xlarge
+          kind: AWSMachineProviderConfig
+          placement:
+            availabilityZone: {{ region }}{{item.key}}
+            region: "{{ region }}"
+          publicIp: null
+          securityGroups:
+          - filters:
+            - name: group-id
+              values:
+                - "{{ cluster_security_stack.stack_outputs.WorkerSecurityGroupId }}"
+          subnet:
+            filters:
+            - name: subnet-id
+              values:
+              - "{{ privatesubnets.split(',')[item.value] }}"
+          tags:
+          - name: kubernetes.io/cluster/{{ infraid }}
+            value: owned
+{% if automatic_shutdown is defined %}
+          - name: auto_shut_bool
+            value: "{{ automatic_shutdown }}"
+{% endif %}
+          userDataSecret:
+            name: worker-user-data
+      versions:
+        kubelet: ""

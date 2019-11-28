@@ -1,0 +1,30 @@
+apiVersion: config.openshift.io/v1
+kind: OAuth
+metadata:
+  name: cluster
+spec:
+  identityProviders:
+  # This provider name is prefixed to the returned user ID to form an identity name:
+  - name: "{{ ldap_idp_name }}"
+    # Controls how mappings are established between this provider’s identities and user objects:
+    mappingMethod: claim
+    type: LDAP
+    ldap:
+      attributes:
+        id:
+        - dn
+        email:
+        - mail
+        name:
+        - cn
+        preferredUsername:
+        - uid
+      bindDN: "{{ bindDN }}"
+      bindPassword:
+        name: "{{ ldap_secret_name }}"
+      # ca:
+        # name: ca-config-map1
+      # LDAP or LDAPS:
+      insecure: false
+      # An RFC 2255 URL which specifies the LDAP host and search parameters to use:
+      url: "{{ ldap_url }}"

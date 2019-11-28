@@ -1,0 +1,47 @@
+apiVersion: v1
+baseDomain: {{ publiczonename }}
+compute:
+- name: worker
+  platform:
+    aws:
+      type: {{ worker_instance }}
+      zones:
+      - {{ region }}a
+      - {{ region }}b
+      - {{ region }}c
+  replicas: 3
+controlPlane:
+  name: master
+  platform:
+    aws:
+      type: {{ master_instance }}
+      zones:
+      - {{ region }}a
+      - {{ region }}b
+      - {{ region }}c
+  replicas: 3
+metadata:
+  creationTimestamp: null
+  name: {{ clustername }}
+networking:
+  clusterNetwork:
+  - cidr: {{ clustercidr }}
+    hostPrefix: 23
+  machineCIDR: {{ vpccidr }}
+  networkType: OpenShiftSDN
+  serviceNetwork:
+  - {{ servicecidr }}
+platform:
+  aws:
+    region: {{ region }}
+{% if extra_instance_tags %}
+    userTags: {{ extra_instance_tags | to_yaml }}
+{% endif %}
+{% if pull_secret is match("^'.*") %}
+pullSecret: {{ pull_secret }}
+{% else %}
+pullSecret: '{{ pull_secret }}'
+{% endif %}
+{% if ssh_key is defined %}
+sshKey: {{ ssh_key }}
+{% endif %}

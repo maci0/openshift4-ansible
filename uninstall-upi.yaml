@@ -1,0 +1,249 @@
+---
+- name: Uninstall OpenShift 4
+  gather_facts: false
+  hosts: localhost
+  vars:
+    state: absent
+  tasks:
+    # Allow users to pass the infraid and clusterid on the command
+    # line, in case they lost the /tmp/{{ clustername }} directory.
+    - import_tasks: tasks/get_infraid.yaml
+      when: infraid is not defined or clusterid is not defined
+
+    - name: Get short infra ID
+      set_fact:
+        short_infraid: "{{ infraid | regex_replace('.*-([^-]+)$', '\\1') }}"
+        short_clusterid: "{{ clusterid | regex_replace('-', '') }}"
+
+    - name: Terminate EC2 CloudFormation stacks
+      cloudformation:
+        stack_name: "{{ item }}"
+        region: "{{ region }}"
+        state: absent
+      loop:
+        - "{{ infraid }}-cluster-master-nodes"
+        - "{{ infraid }}-cluster-bootstrap"
+
+    # Terminate EC2 instances created by OpenShift.
+
+    - name: Get EC2 instances
+      ec2_instance_facts:
+        region: "{{ region }}"
+        filters: "tag:kubernetes.io/cluster/{{ infraid }}=owned"
+      register: ec2_instances
+
+    # We check the kubernetes.io/cluster tag again to make sure that
+    # we don't delete the wrong EC2 instances. This is in case the
+    # "filters" parameter for ec2_instance_facts stops working in the
+    # future for some reason.
+    - name: Terminate EC2 instances
+      ec2:
+        instance_ids: "{{ item['instance_id'] }}"
+        region: "{{ region }}"
+        state: absent
+        wait: yes
+      when:
+        - "'kubernetes.io/cluster/' ~ infraid in item['tags']"
+        - item['tags']['kubernetes.io/cluster/' ~ infraid] == 'owned'
+        - item['state']['name'] != 'terminated'
+      loop: "{{ ec2_instances.instances }}"
+      loop_control:
+        label: "{{ item['tags']['Name'] | default(item['id']) }}"
+
+    - name: List EBS volumes
+      ec2_vol:
+        state: list
+        region: "{{ region }}"
+      register: volumes
+
+    - name: Terminate persistent volumes
+      ec2_vol:
+        id: "{{ item['id'] }}"
+        region: "{{ region }}"
+        state: absent
+      when:
+        - "'Name' in item['tags']"
+        - "'kubernetes-dynamic-pvc-' in item['tags']['Name']"
+        - "'kubernetes.io/cluster/' ~ infraid in item['tags']"
+        - item['tags']['kubernetes.io/cluster/' ~ infraid] == 'owned'
+        - item['status'] == 'available'
+      loop: "{{ volumes['volumes'] }}"
+      loop_control:
+        label: "{{ item['tags']['Name'] | default(item['id']) }}"
+
+    # We need to delete records in the private Route53 zone that were
+    # created by OpenShift. Otherwise, the cluster-infra
+    # CloudFormation stack cannot be deleted.
+
+    - set_fact:
+        privatezonename: "{{ clustername }}.{{ publiczonename }}"
+
+    - name: Check private Route53 zone
+      route53_facts:
+        query: hosted_zone
+      register: hosted_zones
+
+    - block:
+        - name: Get private Route53 record
+          route53:
+            state: get
+            zone: "{{ privatezonename }}"
+            private_zone: yes
+            record: "*.apps.{{ privatezonename }}"
+            type: A
+          register: route53_private
+
+        - name: Terminate private Route53 record
+          route53:
+            zone: "{{ privatezonename }}"
+            private_zone: yes
+            record: "*.apps.{{ privatezonename }}"
+            type: A
+            value: "{{ route53_private.set.value }}"
+            ttl: "{{ route53_private.set.ttl }}"
+            alias: true
+            alias_hosted_zone_id: "{{ route53_private.set.alias_hosted_zone_id }}"
+            state: absent
+          when: "'value' in route53_private.set"
+      when: privatezonename ~ '.' in hosted_zones['HostedZones'] | map(attribute='Name') | list
+
+    - name: Terminate other CloudFormation stacks
+      cloudformation:
+        stack_name: "{{ item }}"
+        region: "{{ region }}"
+        state: absent
+      loop:
+        - "{{ infraid }}-cluster-security"
+        - "{{ infraid }}-cluster-infra"
+
+    # Terminate S3 buckets created by OpenShift.
+
+    - import_tasks: tasks/bootstrap-s3-bucket.yaml
+
+    - name: List S3 buckets
+      aws_s3_bucket_facts:
+        region: "{{ region }}"
+      register: s3
+
+    - name: Terminate S3 buckets
+      s3_bucket:
+        name: "{{ item }}"
+        state: absent
+        force: yes
+      when: item is match('image-registry-' ~ region ~ '-' ~ short_clusterid ~ '-[a-z0-9]+')
+      loop: "{{ s3.ansible_facts.buckets | map(attribute='name') | list }}"
+
+    # Terminate load balancers and security groups created by
+    # OpenShift.
+
+    - name: Get ELBs
+      ec2_elb_facts:
+        region: "{{ region }}"
+      register: ec2_elbs
+
+    - name: Terminate ELBs
+      ec2_elb_lb:
+        name: "{{ item['name'] }}"
+        region: "{{ region }}"
+        state: absent
+        wait: yes
+      when:
+        - "'kubernetes.io/cluster/' ~ infraid in item['tags']"
+        - item['tags']['kubernetes.io/cluster/' ~ infraid] == 'owned'
+      loop: "{{ ec2_elbs.elbs }}"
+      loop_control:
+        label: "{{ item['name'] }}"
+
+    - name: Get security groups
+      ec2_group_facts:
+        region: "{{ region }}"
+        filters: "tag:kubernetes.io/cluster/{{ infraid }}=owned"
+      register: ec2_groups
+
+    # Even though we use the "wait" option when we terminate the ELBs,
+    # deleting the security groups sometimes fails because of
+    # dependent objects. We retry as a workaround.
+
+    - name: Terminate security groups
+      ec2_group:
+        group_id: "{{ item['group_id'] }}"
+        region: "{{ region }}"
+        state: absent
+      register: task_result
+      retries: 3
+      delay: 10
+      until: task_result is success
+      when:
+        - "'kubernetes.io/cluster/' ~ infraid in item['tags']"
+        - item['tags']['kubernetes.io/cluster/' ~ infraid] == 'owned'
+      loop: "{{ ec2_groups.security_groups }}"
+      loop_control:
+        label: "{{ item['group_name'] }}"
+
+    # The ID at the end of the IAM usernames is random, it does not
+    # match the cluster's infraid. There's no Ansible module that
+    # filters IAM users by tag. For now, we use the AWS CLI to list
+    # all IAM users and carefully check the username before deleting
+    # them.
+
+    - name: Get IAM users
+      command: "{{ aws }} iam list-users"
+      register: all_iam_users
+
+    - set_fact:
+        iam_users: "{{ (all_iam_users.stdout | from_json)['Users'] | selectattr('UserName', 'match', clustername ~ '-(cloud-credential-operator-iam-ro|openshift-image-registry|openshift-ingress|openshift-machine-api)-[a-z0-9]+') | map(attribute='UserName') | list }}"
+
+    - name: Terminate IAM user policies
+      iam_policy:
+        iam_type: user
+        iam_name: "{{ item }}"
+        policy_name: "{{ item }}-policy"
+        state: absent
+      loop: "{{ iam_users }}"
+
+    - name: Get IAM user access keys
+      command: "{{ aws }} iam list-access-keys --user-name {{ item }}"
+      register: access_keys
+      loop: "{{ iam_users }}"
+
+    - name: Terminate IAM user access keys
+      iam:
+        iam_type: user
+        name: "{{ item['item'] }}"
+        state: update
+        access_key_ids: "{{ (item['stdout'] | from_json)['AccessKeyMetadata'] | map(attribute='AccessKeyId') | list }}"
+        access_key_state: remove
+      loop: "{{ access_keys['results'] }}"
+
+    - name: Terminate IAM users
+      iam_user:
+        name: "{{ item }}"
+        state: absent
+      loop: "{{ iam_users }}"
+
+    - name: Get public Route53 record
+      route53:
+        state: get
+        zone: "{{ publiczonename }}"
+        record: "*.apps.{{ clustername }}.{{ publiczonename }}"
+        type: A
+      register: route53_public
+
+    - name: Terminate public Route53 records
+      route53:
+        zone: "{{ publiczonename }}"
+        record: "*.apps.{{ clustername }}.{{ publiczonename }}"
+        type: A
+        value: "{{ route53_public.set.value }}"
+        ttl: "{{ route53_public.set.ttl }}"
+        alias: true
+        alias_hosted_zone_id: "{{ route53_public.set.alias_hosted_zone_id }}"
+        state: absent
+      when: "'value' in route53_public.set"
+
+    - name: Untag subnets
+      command: "{{ aws }} --region {{ region }} ec2 delete-tags --resources {{ item }} --tags Key=kubernetes.io/cluster/{{ infraid }}"
+      loop: "{{ publicsubnets.split(',') + privatesubnets.split(',') }}"
+
+    - import_tasks: tasks/installer-config-directory.yaml
+...
